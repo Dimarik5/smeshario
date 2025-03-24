@@ -63,7 +63,7 @@ public class Main extends ApplicationAdapter {
     }
 
     private void updateBall() {
-        ballVelocity.y -= 0.25f; // Гравитация
+        ballVelocity.y -= 1f; // Гравитация
         ballPosition.add(ballVelocity);
 
         // Проверка на столкновение с землей

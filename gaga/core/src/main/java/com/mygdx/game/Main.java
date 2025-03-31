@@ -48,13 +48,13 @@ public class Main extends ApplicationAdapter {
 
     private void handleInput() {
         if (Gdx.input.isKeyPressed(Input.Keys.A)) {
-            ballPosition.x -= 5;
+            ballPosition.x -= 15;
         }
         if (Gdx.input.isKeyPressed(Input.Keys.D)) {
-            ballPosition.x += 15;
+            ballPosition.x += 25;
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.W) && !isJumping) {
-            ballVelocity.y = 10;
+            ballVelocity.y = 20;
             isJumping = true;
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.W) && isJumping) {

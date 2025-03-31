@@ -48,7 +48,7 @@ public class Main extends ApplicationAdapter {
 
     private void handleInput() {
         if (Gdx.input.isKeyPressed(Input.Keys.A)) {
-            ballPosition.x -= 15;
+            ballPosition.x -= 150;
         }
         if (Gdx.input.isKeyPressed(Input.Keys.D)) {
             ballPosition.x += 25;

@@ -51,7 +51,7 @@ public class Main extends ApplicationAdapter {
             ballPosition.x -= 5;
         }
         if (Gdx.input.isKeyPressed(Input.Keys.D)) {
-            ballPosition.x += 5;
+            ballPosition.x += 15;
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.W) && !isJumping) {
             ballVelocity.y = 10;
@@ -63,7 +63,7 @@ public class Main extends ApplicationAdapter {
     }
 
     private void updateBall() {
-        ballVelocity.y -= 1f; // Гравитация
+        ballVelocity.y -= 0.5f; // Гравитация
         ballPosition.add(ballVelocity);
 
         // Проверка на столкновение с землей

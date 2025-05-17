@@ -5,57 +5,49 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Disposable;
 
-public class AnimationManager {
-    private Animation<TextureRegion> runningAnimation;
-    private Animation<TextureRegion> jumpingAnimation;
-    private float stateTime = 0;
-    private boolean isJumping = false;
-    private boolean gameStarted = false;
+public class AnimationManager implements Disposable {
+    private final Animation<TextureRegion> runningAnimation;
+    private final Animation<TextureRegion> jumpingAnimation;
+    private float stateTime;
 
     public AnimationManager(String runningPath, String jumpingPath) {
-        this.runningAnimation = loadAnimation(runningPath, 0.0416f); // 24 кадра/сек (1/24)
-        this.jumpingAnimation = loadAnimation(jumpingPath, 0.0416f);
+        this.runningAnimation = createAnimation(runningPath, 1/24f, Animation.PlayMode.LOOP);
+        this.jumpingAnimation = createAnimation(jumpingPath, 1/24f, Animation.PlayMode.LOOP);
+        this.stateTime = 0f;
     }
 
-    private Animation<TextureRegion> loadAnimation(String path, float frameDuration) {
+    private Animation<TextureRegion> createAnimation(String path, float frameDuration, Animation.PlayMode playMode) {
         Array<TextureRegion> frames = new Array<>();
-
-        // Загружаем 24 кадра (1.png, 2.png, ..., 24.png)
         for (int i = 1; i <= 24; i++) {
-            String filePath = path + "/" + i + ".png";
-            frames.add(new TextureRegion(new Texture(Gdx.files.internal(filePath))));
+            Texture texture = new Texture(Gdx.files.internal(path + "/" + i + ".png"));
+            frames.add(new TextureRegion(texture));
         }
-
-        return new Animation<>(frameDuration, frames);
+        Animation<TextureRegion> animation = new Animation<>(frameDuration, frames);
+        animation.setPlayMode(playMode);
+        return animation;
     }
 
-    public void update(float deltaTime, boolean isJumping, boolean gameStarted) {
-        this.isJumping = isJumping;
-        this.gameStarted = gameStarted;
-
-        if (gameStarted) {
-            stateTime += deltaTime;
-        } else {
-            stateTime = 0; // Сбрасываем время для первого кадра
-        }
+    public void update(float deltaTime) {
+        stateTime += deltaTime;
     }
 
-    public TextureRegion getCurrentFrame() {
-        if (!gameStarted) {
-            return runningAnimation.getKeyFrames()[0]; // Первый кадр до старта
-        }
+    public TextureRegion getFrame(boolean isJumping) {
         return isJumping ?
-            jumpingAnimation.getKeyFrame(stateTime, false) :
-            runningAnimation.getKeyFrame(stateTime, true);
+            jumpingAnimation.getKeyFrame(stateTime) :
+            runningAnimation.getKeyFrame(stateTime);
     }
 
+    @Override
     public void dispose() {
-        for (TextureRegion frame : runningAnimation.getKeyFrames()) {
-            frame.getTexture().dispose();
-        }
-        for (TextureRegion frame : jumpingAnimation.getKeyFrames()) {
-            frame.getTexture().dispose();
+        disposeAnimation(runningAnimation);
+        disposeAnimation(jumpingAnimation);
+    }
+
+    private void disposeAnimation(Animation<TextureRegion> animation) {
+        for (TextureRegion region : animation.getKeyFrames()) {
+            region.getTexture().dispose();
         }
     }
 }

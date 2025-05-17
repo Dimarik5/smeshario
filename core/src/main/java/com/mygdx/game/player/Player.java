@@ -1,73 +1,71 @@
 package com.mygdx.game.player;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 
 public class Player {
-    private Vector2 position;
-    private Vector2 velocity;
-    private float playerHeight; // 1/4 высоты экрана
-    private AnimationManager animationManager;
-    private boolean isJumping = false;
-    private boolean gameStarted = false;
+    private final Vector2 position; // Фиксированная позиция по X
+    private final float spriteWidth;
+    private final float spriteHeight;
+    private final AnimationManager animationManager;
 
-    // Физические параметры (можно менять)
-    private final float gravity = -20f; // Гравитация (можно регулировать)
-    private final float jumpForce = 10f; // Сила прыжка (можно регулировать)
+    // Физика прыжка
+    private float verticalVelocity;
+    private boolean isJumping;
+    private final float jumpVelocity = 750f;
+    private final float gravity = -1800f;
+    private final float groundY;
 
-    public Player(float startX, float startY, float screenHeight) {
-        this.playerHeight = screenHeight / 4;
-        this.position = new Vector2(startX, startY);
-        this.velocity = new Vector2(0, 0);
+    public Player(float x, float y, float screenHeight) {
+        this.spriteHeight = screenHeight / 4f; // 1/4 высоты экрана
+        this.position = new Vector2(x, y);
+        this.groundY = y; // Начальная Y позиция = уровень земли
+
+        // Рассчитываем ширину с сохранением пропорций
+        TextureRegion sampleFrame = new TextureRegion(new Texture(Gdx.files.internal("characters/krosh/running/1.png")));
+        float aspectRatio = sampleFrame.getRegionWidth() / (float)sampleFrame.getRegionHeight();
+        this.spriteWidth = spriteHeight * aspectRatio;
+        sampleFrame.getTexture().dispose();
+
         this.animationManager = new AnimationManager(
             "characters/krosh/running",
             "characters/krosh/jumping"
         );
-    }
-
-    public Vector2 getPosition() {
-        return position;
+        this.verticalVelocity = 0;
+        this.isJumping = false;
     }
 
     public void update(float deltaTime) {
-        // Физика прыжка
-        velocity.y += gravity * deltaTime;
-        position.mulAdd(velocity, deltaTime);
+        // Только вертикальное движение (прыжок)
+        if (isJumping) {
+            verticalVelocity += gravity * deltaTime;
+            position.y += verticalVelocity * deltaTime;
 
-        // Проверка земли
-        if (position.y <= 0) {
-            position.y = 0;
-            velocity.y = 0;
-            isJumping = false;
+            // Проверка земли
+            if (position.y <= groundY) {
+                position.y = groundY;
+                verticalVelocity = 0;
+                isJumping = false;
+            }
         }
 
-        animationManager.update(deltaTime, isJumping, gameStarted);
+        animationManager.update(deltaTime);
     }
 
     public void jump() {
-        if (!isJumping && gameStarted) {
-            velocity.y = jumpForce;
+        if (!isJumping) {
+            verticalVelocity = jumpVelocity;
             isJumping = true;
         }
     }
 
-    public void startGame() {
-        this.gameStarted = true;
-    }
-
     public void render(SpriteBatch batch) {
-        TextureRegion currentFrame = animationManager.getCurrentFrame();
-        if (currentFrame != null) {
-            float aspectRatio = currentFrame.getRegionWidth() / (float) currentFrame.getRegionHeight();
-            float width = playerHeight * aspectRatio;
-
-            batch.draw(currentFrame,
-                position.x, position.y,
-                width, playerHeight);
-        }
+        TextureRegion frame = animationManager.getFrame(isJumping);
+        batch.draw(frame, position.x, position.y, spriteWidth, spriteHeight);
     }
-
 
     public void dispose() {
         animationManager.dispose();

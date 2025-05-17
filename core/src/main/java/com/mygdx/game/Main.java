@@ -2,81 +2,79 @@ package com.mygdx.game;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.Input;
+import com.mygdx.game.player.Player;
+import com.mygdx.game.world.Background;
 
 public class Main extends ApplicationAdapter {
     SpriteBatch batch;
-    OrthographicCamera camera;
     ShapeRenderer shapeRenderer;
-    Vector2 ballPosition;
-    Vector2 ballVelocity;
-    float ballRadius = 20;
-    boolean isJumping;
+    OrthographicCamera camera;
+
+    Player player;
+    Background background;
+
+    boolean gameStarted = false;
 
     @Override
     public void create() {
         batch = new SpriteBatch();
-        camera = new OrthographicCamera();
-        camera.setToOrtho(false, 800, 600);
         shapeRenderer = new ShapeRenderer();
-        ballPosition = new Vector2(100, 50);
-        ballVelocity = new Vector2(0, 0);
+
+        camera = new OrthographicCamera();
+        camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
+        background = new Background("environment/background.png");
+        player = new Player(100, 50, 20);
     }
 
     @Override
     public void render() {
         handleInput();
-        updateBall();
+        update(Gdx.graphics.getDeltaTime()); // Передаем deltaTime
 
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        camera.update();
-        batch.setProjectionMatrix(camera.combined);
         shapeRenderer.setProjectionMatrix(camera.combined);
 
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(1, 1, 1, 1);
-        shapeRenderer.circle(ballPosition.x, ballPosition.y, ballRadius);
-        shapeRenderer.end();
+        background.render(batch, camera); // Теперь рендеринг фона внутри его класса
+
+        //отрисовка персонажа
+        batch.begin();
+        player.render(batch);
+        batch.end();
     }
 
     private void handleInput() {
-        if (Gdx.input.isKeyPressed(Input.Keys.A)) {
-            ballPosition.x -= 150;
+        if (!gameStarted && Gdx.input.isKeyJustPressed(Input.Keys.ANY_KEY)) {
+            gameStarted = true;
+            player.startGame(); // Уведомляем персонажа о старте игры
         }
-        if (Gdx.input.isKeyPressed(Input.Keys.D)) {
-            ballPosition.x += 25;
-        }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.W) && !isJumping) {
-            ballVelocity.y = 20;
-            isJumping = true;
-        }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.W) && isJumping) {
-            ballVelocity.y = 20;
+
+        if (gameStarted && Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            player.jump();
         }
     }
 
-    private void updateBall() {
-        ballVelocity.y -= 0.5f; // Гравитация
-        ballPosition.add(ballVelocity);
+    private void update(float deltaTime) {
+        if (!gameStarted) return;
 
-        // Проверка на столкновение с землей
-        if (ballPosition.y <= ballRadius) {
-            ballPosition.y = ballRadius;
-            ballVelocity.y = 0;
-            isJumping = false;
-        }
+        background.update(deltaTime); // Обновляем фон с deltaTime
+        player.update(deltaTime);
+
+        // Камера остается фиксированной относительно игрока
+        camera.position.x = camera.viewportWidth / 2; // Фиксированная позиция камеры
+        camera.position.y = camera.viewportHeight / 2;
     }
 
     @Override
     public void dispose() {
         batch.dispose();
-        shapeRenderer.dispose();
+        background.dispose();
     }
 }

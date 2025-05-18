@@ -9,24 +9,26 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.mygdx.game.player.Player;
 import com.mygdx.game.world.Background;
 
+
 public class Main extends ApplicationAdapter {
     private SpriteBatch batch;
     private OrthographicCamera camera;
     private Player player;
     private Background background;
 
-    private static final float VIRTUAL_WIDTH = 800;
-    private static final float VIRTUAL_HEIGHT = 600;
+    private static final float VIRTUAL_WIDTH = 1920;
+    private static final float VIRTUAL_HEIGHT = 1080;
     private boolean gameStarted = false;
 
     @Override
     public void create() {
+        boolean fullscreen = Gdx.graphics.isFullscreen();
         batch = new SpriteBatch();
         camera = new OrthographicCamera();
         camera.setToOrtho(false, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
         background = new Background("environment/background.png");
-        player = new Player(100, 100, VIRTUAL_HEIGHT); // X=100, Y=100 (над землей)
+        player = new Player(100, 150, VIRTUAL_HEIGHT); // X=100, Y=100 (над землей)
     }
 
     @Override
@@ -40,7 +42,7 @@ public class Main extends ApplicationAdapter {
             player.update(deltaTime);     // Физика прыжка
         }
 
-        // Очистка экрана
+        // Очистка экрана\
         Gdx.gl.glClearColor(0.1f, 0.1f, 0.1f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 

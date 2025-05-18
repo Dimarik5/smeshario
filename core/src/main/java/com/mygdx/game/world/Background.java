@@ -7,7 +7,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
 public class Background {
     private Texture texture; //текстура фона
-    private float scrollSpeed = 200f; // Скорость прокрутки фона (пикселей в секунду)
+    private float scrollSpeed = 960f; // Скорость прокрутки фона (пикселей в секунду)
     private float offsetX = 0; //смещение фона по Х
     private float textureWidth; //ширина текстуры
     private float textureHeight; //высота текстуры
@@ -24,8 +24,8 @@ public class Background {
     }
 
     public void render(SpriteBatch batch, OrthographicCamera camera) {
-        float scale = camera.viewportHeight / textureHeight; //маштабируем для заполнения экрана по высоте
-        float scaledWidth = textureWidth * scale; //ширена текстуры
+        float scale = camera.viewportHeight / textureHeight; //масштабируем для заполнения экрана по высоте
+        float scaledWidth = textureWidth * scale; //ширина текстуры
 
         // Рассчитываем позиции для бесшовного скроллинга
         float firstX = ((camera.position.x - camera.viewportWidth/2) + offsetX) % scaledWidth;

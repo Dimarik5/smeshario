@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector3;
 import com.mygdx.game.menu.MainMenu;
+import com.mygdx.game.menu.CharacterSelectionScreen;
 import com.mygdx.game.player.Player;
 import com.mygdx.game.world.Background;
 
@@ -17,10 +18,17 @@ public class Main extends ApplicationAdapter {
     private Player player;
     private Background background;
     private MainMenu mainMenu;
+    private CharacterSelectionScreen characterSelectionScreen;
 
     private static final float VIRTUAL_WIDTH = 1920;
     private static final float VIRTUAL_HEIGHT = 1080;
-    private boolean gameStarted = false;
+
+    private enum GameState {
+        MAIN_MENU,
+        CHARACTER_SELECTION,
+        IN_GAME
+    }
+    private GameState currentState = GameState.MAIN_MENU;
 
     @Override
     public void create() {
@@ -29,6 +37,7 @@ public class Main extends ApplicationAdapter {
         camera.setToOrtho(false, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
         mainMenu = new MainMenu(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+        characterSelectionScreen = new CharacterSelectionScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         background = new Background("environment/background.png");
         player = new Player(100, 150, VIRTUAL_HEIGHT);
     }
@@ -36,7 +45,7 @@ public class Main extends ApplicationAdapter {
     @Override
     public void render() {
         handleInput();
-        updateInputStates(); // Добавлен вызов обновления состояний кнопок
+        updateInputStates();
 
         float deltaTime = Gdx.graphics.getDeltaTime();
 
@@ -46,26 +55,33 @@ public class Main extends ApplicationAdapter {
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
 
-        if (!gameStarted) {
-            mainMenu.render(batch, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
-        } else {
-            batch.end();
-            updateGame(deltaTime);
-            renderGame();
-            return;
+        switch (currentState) {
+            case MAIN_MENU:
+                mainMenu.render(batch, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+                break;
+            case CHARACTER_SELECTION:
+                characterSelectionScreen.render(batch);
+                break;
+            case IN_GAME:
+                batch.end();
+                updateGame(deltaTime);
+                renderGame();
+                return;
         }
 
         batch.end();
     }
 
     private void updateInputStates() {
-        // Преобразуем координаты касания в виртуальные координаты
         Vector3 touchPos = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
         camera.unproject(touchPos);
-
-        // Обновляем состояния кнопок (наведение и нажатие)
         boolean isTouched = Gdx.input.isTouched();
-        mainMenu.updateInput(touchPos.x, touchPos.y, isTouched);
+
+        if (currentState == GameState.MAIN_MENU) {
+            mainMenu.updateInput(touchPos.x, touchPos.y, isTouched);
+        } else if (currentState == GameState.CHARACTER_SELECTION) {
+            characterSelectionScreen.updateInput(touchPos.x, touchPos.y, isTouched);
+        }
     }
 
     private void updateGame(float deltaTime) {
@@ -85,27 +101,36 @@ public class Main extends ApplicationAdapter {
     }
 
     private void handleInput() {
-        if (!gameStarted) {
-            if (Gdx.input.justTouched()) {
-                Vector3 touchPos = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
-                camera.unproject(touchPos);
-
-                if (mainMenu.isNewGameClicked(touchPos.x, touchPos.y)) {
-                    gameStarted = true;
-                }
-                else if (mainMenu.isCharacterClicked(touchPos.x, touchPos.y)) {
-                    Gdx.app.log("Menu", "Character button clicked");
-                }
-                else if (mainMenu.isSettingsClicked(touchPos.x, touchPos.y)) {
-                    Gdx.app.log("Menu", "Settings button clicked");
-                }
-                else if (mainMenu.isExitClicked(touchPos.x, touchPos.y)) {
-                    Gdx.app.exit();
-                }
-            }
-        } else {
+        if (currentState == GameState.IN_GAME) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
                 player.jump();
+            }
+        }
+
+        if (Gdx.input.justTouched()) {
+            Vector3 touchPos = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+            camera.unproject(touchPos);
+
+            switch (currentState) {
+                case MAIN_MENU:
+                    if (mainMenu.isNewGameClicked(touchPos.x, touchPos.y)) {
+                        currentState = GameState.IN_GAME;
+                    } else if (mainMenu.isCharacterClicked(touchPos.x, touchPos.y)) {
+                        currentState = GameState.CHARACTER_SELECTION;
+                    } else if (mainMenu.isExitClicked(touchPos.x, touchPos.y)) {
+                        Gdx.app.exit();
+                    }
+                    break;
+
+                case CHARACTER_SELECTION:
+                    if (characterSelectionScreen.isBackClicked(touchPos.x, touchPos.y)) {
+                        currentState = GameState.MAIN_MENU;
+                    } else if (characterSelectionScreen.isLeftArrowClicked(touchPos.x, touchPos.y)) {
+                        characterSelectionScreen.previousCharacter();
+                    } else if (characterSelectionScreen.isRightArrowClicked(touchPos.x, touchPos.y)) {
+                        characterSelectionScreen.nextCharacter();
+                    }
+                    break;
             }
         }
     }
@@ -116,5 +141,7 @@ public class Main extends ApplicationAdapter {
         player.dispose();
         background.dispose();
         mainMenu.dispose();
+        characterSelectionScreen.dispose();
     }
 }
+

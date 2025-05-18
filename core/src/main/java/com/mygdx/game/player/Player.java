@@ -14,8 +14,8 @@ public class Player {
 
     private float verticalVelocity;
     private boolean isJumping;
-    private final float jumpVelocity = 1500f; // Сила прыжка
-    private final float gravity = -3000f; // Сила гравитации
+    private final float jumpVelocity = 1800f; // Сила прыжка
+    private final float gravity = -3600f; // Сила гравитации
     private final float groundY;
 
     public Player(float x, float y, float screenHeight) {

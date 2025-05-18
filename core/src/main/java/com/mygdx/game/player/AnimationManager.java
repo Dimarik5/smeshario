@@ -10,22 +10,34 @@ import com.badlogic.gdx.utils.Disposable;
 public class AnimationManager implements Disposable {
     private final Animation<TextureRegion> runningAnimation;
     private final Animation<TextureRegion> jumpingAnimation;
-    private float runningStateTime; // Отдельное время для бега
-    private float jumpingStateTime; // Отдельное время для прыжка
+    // Добавляем списки для хранения созданных текстур
+    private final Array<Texture> runningTextures;
+    private final Array<Texture> jumpingTextures;
+
+    private float runningStateTime;
+    private float jumpingStateTime;
 
     public AnimationManager(String runningPath, String jumpingPath) {
-        this.runningAnimation = createAnimation(runningPath, 1/24f, Animation.PlayMode.LOOP);
-        this.jumpingAnimation = createAnimation(jumpingPath, 1/24f, Animation.PlayMode.LOOP); // Прыжок тоже может быть LOOP, если он короткий и должен повторяться в воздухе, или NORMAL, если он однократный. Для вашей проблемы это не так важно, как сброс stateTime.
+        this.runningTextures = new Array<>();
+        // Передаем список текстур для заполнения в createAnimation
+        this.runningAnimation = createAnimation(runningPath, runningTextures, 1/24f, Animation.PlayMode.LOOP);
+
+        this.jumpingTextures = new Array<>();
+        // Передаем список текстур для заполнения в createAnimation
+        this.jumpingAnimation = createAnimation(jumpingPath, jumpingTextures, 1/24f, Animation.PlayMode.LOOP);
+
         this.runningStateTime = 0f;
         this.jumpingStateTime = 0f;
     }
 
-    private Animation<TextureRegion> createAnimation(String path, float frameDuration, Animation.PlayMode playMode) {
+    // Модифицируем метод createAnimation для сохранения текстур
+    private Animation<TextureRegion> createAnimation(String path, Array<Texture> texturesList, float frameDuration, Animation.PlayMode playMode) {
         Array<TextureRegion> frames = new Array<>();
-        // Убедитесь, что у вас действительно 24 кадра для каждой анимации,
+        // Убедитесь, что у вас действительно 24 кадра для каждой анимации
         // или сделайте количество кадров параметром или определите его динамически.
         for (int i = 1; i <= 24; i++) {
             Texture texture = new Texture(Gdx.files.internal(path + "/" + i + ".png"));
+            texturesList.add(texture); // Добавляем созданную текстуру в список
             frames.add(new TextureRegion(texture));
         }
         Animation<TextureRegion> animation = new Animation<>(frameDuration, frames);
@@ -44,8 +56,8 @@ public class AnimationManager implements Disposable {
 
     public TextureRegion getFrame(boolean isJumping) {
         return isJumping ?
-                jumpingAnimation.getKeyFrame(jumpingStateTime) : // Используем jumpingStateTime
-                runningAnimation.getKeyFrame(runningStateTime);   // Используем runningStateTime
+            jumpingAnimation.getKeyFrame(jumpingStateTime) : // Используем jumpingStateTime
+            runningAnimation.getKeyFrame(runningStateTime);   // Используем runningStateTime
     }
 
     // Метод для сброса времени анимации бега
@@ -60,18 +72,21 @@ public class AnimationManager implements Disposable {
 
     @Override
     public void dispose() {
-        disposeAnimation(runningAnimation);
-        disposeAnimation(jumpingAnimation);
+        // Теперь освобождаем текстуры из наших списков
+        disposeTextures(runningTextures);
+        disposeTextures(jumpingTextures);
+        // Нет необходимости вызывать dispose на самих объектах Animation,
+        // они не владеют ресурсами, требующими нативной очистки, кроме тех,
+        // что содержатся в TextureRegion (т.е. текстур).
     }
 
-    // Немного улучшенная версия disposeAnimation
-    private void disposeAnimation(Animation<TextureRegion> animation) {
-        // getKeyFrames() возвращает TextureRegion[], а не Object[]
-        TextureRegion[] frames = animation.getKeyFrames();
-        for (TextureRegion frame : frames) {
-            if (frame != null && frame.getTexture() != null) {
-                frame.getTexture().dispose();
+    // Метод для освобождения всех текстур из списка
+    private void disposeTextures(Array<Texture> textures) {
+        for (Texture texture : textures) {
+            if (texture != null) {
+                texture.dispose();
             }
         }
+        textures.clear(); // Очищаем список после освобождения текстур
     }
 }

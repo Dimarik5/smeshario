@@ -28,22 +28,36 @@ public class Background {
         float scaledWidth = textureWidth * scale; //ширина текстуры
 
         // Рассчитываем позиции для бесшовного скроллинга
-        float firstX = ((camera.position.x - camera.viewportWidth/2) + offsetX) % scaledWidth;
-        if (firstX > 0) firstX -= scaledWidth;
+        // offsetX будет постоянно уменьшаться. Нам нужно найти первую видимую позицию.
+        // camera.position.x - camera.viewportWidth / 2  -- это левый край камеры
+        float cameraLeftX = camera.position.x - camera.viewportWidth / 2f;
+
+        // Начальная точка отрисовки фона, учитывающая общий сдвиг offsetX
+        // и сдвигающаяся так, чтобы покрыть левый край камеры.
+        float currentX = offsetX;
+        while (currentX + scaledWidth < cameraLeftX) {
+            currentX += scaledWidth;
+        }
+        // Возможно, нужно сдвинуть еще левее, если offsetX был очень большим
+        while (currentX > cameraLeftX) {
+            currentX -= scaledWidth;
+        }
 
         // Отрисовываем все видимые фрагменты фона
-        batch.begin();
-        for (float x = firstX; x < camera.viewportWidth; x += scaledWidth) {
+        // УБРАН batch.begin();
+        for (float x = currentX; x < cameraLeftX + camera.viewportWidth; x += scaledWidth) {
             batch.draw(texture,
                 x,
                 0,
                 scaledWidth,
                 camera.viewportHeight);
         }
-        batch.end();
+        // УБРАН batch.end();
     }
 
     public void dispose() {
-        texture.dispose();
+        if (texture != null) { // Добавил проверку на null для безопасности
+            texture.dispose();
+        }
     }
 }

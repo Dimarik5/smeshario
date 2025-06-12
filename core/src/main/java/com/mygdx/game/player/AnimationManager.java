@@ -70,6 +70,11 @@ public class AnimationManager implements Disposable {
         jumpingStateTime = 0f;
     }
 
+    // Проверяет, закончилась ли анимация прыжка
+    public boolean isJumpFinished() {
+        return jumpingAnimation.isAnimationFinished(jumpingStateTime);
+    }
+
     @Override
     public void dispose() {
         // Теперь освобождаем текстуры из наших списков

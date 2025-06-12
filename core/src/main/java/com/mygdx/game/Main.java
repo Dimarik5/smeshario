@@ -1,6 +1,10 @@
 // Main.java
 package com.mygdx.game;
 
+import java.util.Iterator;
+import java.util.Random;
+
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -13,6 +17,7 @@ import com.mygdx.game.menu.MainMenu;
 import com.mygdx.game.menu.CharacterSelectionScreen;
 import com.mygdx.game.player.Player;
 import com.mygdx.game.world.Background;
+import com.mygdx.game.obstacles.Obstacle;
 
 public class Main extends ApplicationAdapter {
     private SpriteBatch batch;
@@ -21,6 +26,11 @@ public class Main extends ApplicationAdapter {
     private Background background;
     private MainMenu mainMenu;
     private CharacterSelectionScreen characterSelectionScreen;
+    private Random random = new Random();
+    private Array<Obstacle> obstacles;
+    private float obstacleTimer = 0f;
+    private float obstacleInterval = getRandomInterval(); //рандомно добавляем препятствия
+    private final float groundY = 150f;
 
     private static final float VIRTUAL_WIDTH = 1920;
     private static final float VIRTUAL_HEIGHT = 1080;
@@ -30,6 +40,11 @@ public class Main extends ApplicationAdapter {
         CHARACTER_SELECTION,
         IN_GAME
     }
+    //метод для генерации интервала препятствий
+    private float getRandomInterval() {
+        return 2f + random.nextFloat() * (4f - 1f); // от 1 до 4 секунд
+    }
+
     private GameState currentState = GameState.MAIN_MENU;
 
     private enum PressedButtonType {
@@ -55,6 +70,8 @@ public class Main extends ApplicationAdapter {
         batch = new SpriteBatch();
         camera = new OrthographicCamera();
         camera.setToOrtho(false, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+
+        obstacles = new Array<>();
 
         mainMenu = new MainMenu(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         characterSelectionScreen = new CharacterSelectionScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
@@ -217,6 +234,44 @@ public class Main extends ApplicationAdapter {
     private void updateGame(float deltaTime) {
         background.update(deltaTime);
         player.update(deltaTime);
+        // Обновляем таймер и создаем новые препятствия
+        obstacleTimer += deltaTime;
+        if (obstacleTimer >= obstacleInterval) {
+            obstacleTimer = 0;
+            spawnObstacle();
+            obstacleInterval = getRandomInterval(); //перезадаем интервал для генерации
+        }
+
+        // Обновляем и удаляем пройденные препятствия
+        for (Iterator<Obstacle> it = obstacles.iterator(); it.hasNext();) {
+            Obstacle obstacle = it.next();
+            obstacle.update(deltaTime); // Нужно добавить метод update в класс Obstacle
+
+
+            // Удаляем препятствия, которые ушли за экран
+            if (obstacle.getX() + obstacle.getWidth() < camera.position.x - camera.viewportWidth/2) {
+                it.remove();
+                obstacle.dispose();
+            }
+        }
+    }
+
+    private void spawnObstacle() {
+        float spawnX = camera.position.x + camera.viewportWidth / 2;
+
+        // Случайный выбор между beehive и pit
+        String texturePath;
+        float height;
+
+        if (random.nextBoolean()) {
+            texturePath = "environment/beehive.png";
+            height = 380f;//высота улья
+        } else {
+            texturePath = "environment/pit.png";
+            height = 120f; //высота ямы
+        }
+
+        obstacles.add(new Obstacle(spawnX, groundY, texturePath, height));;
     }
 
     private void renderGame() {
@@ -231,6 +286,10 @@ public class Main extends ApplicationAdapter {
 
         // Background теперь просто рисует, не управляя batch
         background.render(batch, camera);
+        //рендер препятствий
+        for (Obstacle obstacle : obstacles) {
+            obstacle.render(batch);
+        }
 
         // Игрок тоже просто рисует (убедись, что player.render тоже не управляет batch)
         player.render(batch);
@@ -330,6 +389,10 @@ public class Main extends ApplicationAdapter {
         if (menuMusic != null) menuMusic.dispose();
         if (gameplayMusic != null) gameplayMusic.dispose();
         // currentPlayingMusic - это ссылка на один из вышеуказанных объектов, ее отдельно освобождать не надо
+        for (Obstacle obstacle : obstacles) {
+            obstacle.dispose();
+        }
+        obstacles.clear();
     }
 
     // Дополнительно можно добавить методы жизненного цикла для музыки, если нужно

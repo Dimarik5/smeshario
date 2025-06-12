@@ -1,13 +1,18 @@
 package com.mygdx.game.player;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Rectangle;
+
 
 public class Player {
     private final Vector2 position;
+    private final Rectangle bounds;
+    private final float boundsInset = 20f; // Уменьшаем хитбокс со всех сторон
     private final float spriteWidth;
     private final float spriteHeight;
     private final AnimationManager animationManager;
@@ -17,6 +22,8 @@ public class Player {
     private final float jumpVelocity = 1800f; // Сила прыжка
     private final float gravity = -3600f; // Сила гравитации
     private final float groundY;
+
+    private final Sound jumpSound;
 
     public Player(float x, float y, float screenHeight) {
         this.spriteHeight = 480; // Высота спрайта Кроша
@@ -32,10 +39,18 @@ public class Player {
                 "characters/krosh/running",
                 "characters/krosh/jumping"
         );
+        this.jumpSound = Gdx.audio.newSound(Gdx.files.internal("music/jump_sound.ogg"));
         this.verticalVelocity = 0;
         this.isJumping = false;
         // При инициализации персонаж на земле и бежит, так что анимация бега должна быть активна
         // Ее stateTime уже 0f по умолчанию в AnimationManager
+        this.bounds = new Rectangle(
+            position.x + boundsInset,
+            position.y + boundsInset,
+            spriteWidth - 2 * boundsInset,
+            spriteHeight - 2 * boundsInset
+        );
+
     }
 
     public void update(float deltaTime) {
@@ -56,6 +71,8 @@ public class Player {
 
         // Передаем текущее состояние прыжка в AnimationManager
         animationManager.update(deltaTime, isJumping);
+        //для хитбокса
+        bounds.setPosition(position.x + boundsInset, position.y + boundsInset);
     }
 
     public void jump() {
@@ -64,6 +81,7 @@ public class Player {
             isJumping = true;
             // Персонаж начал прыжок, сбрасываем анимацию прыжка
             animationManager.resetJumpingAnimation();
+            jumpSound.play(); //воспроизведение звука прыжка при нажатии
         }
     }
 
@@ -72,7 +90,12 @@ public class Player {
         batch.draw(frame, position.x, position.y, spriteWidth, spriteHeight);
     }
 
+    public Rectangle getBounds() {
+        return bounds;
+    }
+
     public void dispose() {
         animationManager.dispose();
+        jumpSound.dispose();
     }
 }

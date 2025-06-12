@@ -12,6 +12,8 @@ public class Obstacle {
     private final float width;
     private final float height;
     private final Rectangle bounds;
+    private final float boundsInsetX = 55f; // Уменьшает ширину хитбокса
+    private final float boundsInsetY = 30f; // Уменьшает высоту хитбокса
     private final float speed = 960f; // Скорость движения (должна совпадать со скоростью фона)
 
     public Obstacle(float x, float y, String texturePath, float height) {
@@ -21,12 +23,20 @@ public class Obstacle {
         this.height = height;
         float aspectRatio = texture.getWidth() / (float) texture.getHeight();
         this.width = height * aspectRatio;
-        this.bounds = new Rectangle(x, y, width, height);
+        //штука для хитбокса
+        this.bounds = new Rectangle(
+            x + boundsInsetX,
+            y + boundsInsetY,
+            width - 2 * boundsInsetX,
+            height - 2 * boundsInsetY
+        );
+
+
     }
 
     public void update(float deltaTime) {
         x -= speed * deltaTime; // Движемся влево
-        bounds.setPosition(x, y);
+        bounds.setPosition(x + boundsInsetX, y + boundsInsetY); // Обновляем позицию с учётом отступа
     }
 
     public void render(SpriteBatch batch) {

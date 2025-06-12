@@ -3,6 +3,15 @@ package com.mygdx.game;
 import java.util.Iterator;
 import java.util.Random;
 
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+
+
+import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;//для отрисовки хитбокса
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
@@ -17,19 +26,38 @@ import com.mygdx.game.menu.CharacterSelectionScreen;
 import com.mygdx.game.player.Player;
 import com.mygdx.game.world.Background;
 import com.mygdx.game.obstacles.Obstacle;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 
 public class Main extends ApplicationAdapter {
     private SpriteBatch batch;
+    private ShapeRenderer shapeRenderer; //это и ниже для отрисовки хитбокса
+    private boolean debugHitboxes = false; // Включаем/выключаем отладку отрисовки хитбокса
+    private Animation<TextureRegion> pitDeathAnimation; // это и 4 ниже для гифки на экране смерти
+    private Animation<TextureRegion> beehiveDeathAnimation;
+    private float deathAnimationTime = 0f;
+    private boolean showPitAnimation = false;
+    private boolean showBeehiveAnimation = false;
     private OrthographicCamera camera;
     private Player player;
     private Background background;
     private MainMenu mainMenu;
+    private Sound gameOverSound;
     private CharacterSelectionScreen characterSelectionScreen;
     private Random random = new Random();
     private Array<Obstacle> obstacles;
     private float obstacleTimer = 0f;
     private float obstacleInterval = getRandomInterval(); //рандомно добавляем препятствия
     private final float groundY = 150f;
+    private boolean gameOver = false;
+    private Texture gameOverTexture;
+    private int score;
+    private float scoreTimeAccumulator;
+    private Array<Integer> scoreHistory;
+    private BitmapFont scoreFont;
+    private BitmapFont deathScoreFont;
+    private FreeTypeFontGenerator fontGenerator;
+
 
     private static final float VIRTUAL_WIDTH = 1920;
     private static final float VIRTUAL_HEIGHT = 1080;
@@ -37,7 +65,8 @@ public class Main extends ApplicationAdapter {
     private enum GameState {
         MAIN_MENU,
         CHARACTER_SELECTION,
-        IN_GAME
+        IN_GAME,
+        GAME_OVER
     }
     //метод для генерации интервала препятствий
     private float getRandomInterval() {
@@ -67,6 +96,8 @@ public class Main extends ApplicationAdapter {
     @Override
     public void create() {
         batch = new SpriteBatch();
+        shapeRenderer = new ShapeRenderer(); //для отрисовки хитбокса
+
         camera = new OrthographicCamera();
         camera.setToOrtho(false, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
@@ -76,6 +107,48 @@ public class Main extends ApplicationAdapter {
         characterSelectionScreen = new CharacterSelectionScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         background = new Background("environment/background.png");
         player = new Player(100, 150, VIRTUAL_HEIGHT);
+        // Загрузка pit анимации
+        Array<TextureRegion> pitFrames = new Array<>();
+        for (int i = 1; i <= 24; i++) {
+            Texture frame = new Texture(Gdx.files.internal("game_over/pit_animation/" + i + ".png"));
+            pitFrames.add(new TextureRegion(frame));
+        }
+        pitDeathAnimation = new Animation<>(1f / 24f, pitFrames, Animation.PlayMode.LOOP);
+
+        // Загрузка beehive анимации
+        Array<TextureRegion> beehiveFrames = new Array<>();
+        for (int i = 1; i <= 24; i++) {
+            Texture frame = new Texture(Gdx.files.internal("game_over/beehive_animation/" + i + ".png"));
+            beehiveFrames.add(new TextureRegion(frame));
+        }
+        beehiveDeathAnimation = new Animation<>(1f / 24f, beehiveFrames, Animation.PlayMode.LOOP);
+
+        // счетчик очков
+        FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/smeshariki2007fixed_regular.ttf"));
+        FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        parameter.size = 70; // можешь изменить под нужный размер
+        parameter.color = Color.valueOf("FF8000");
+        //чтоб буковки русские были
+        parameter.characters = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ" +
+            "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" +
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:!?()[]{}<>|/@#^&*-_=+\"'\\ \n";
+
+        scoreFont = generator.generateFont(parameter);
+
+        // Дополнительный шрифт для экрана смерти
+        FreeTypeFontGenerator.FreeTypeFontParameter deathFontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        deathFontParameter.size = 90;
+        deathFontParameter.color = Color.WHITE;
+        deathFontParameter.characters = parameter.characters; // те же символы
+        deathScoreFont = generator.generateFont(deathFontParameter);
+
+        fontGenerator = generator; // чтобы потом освободить
+
+        //это для счетчика
+        score = 0;
+        scoreTimeAccumulator = 0;
+        scoreHistory = new Array<>();
+
 
         // Загрузка музыки
         try {
@@ -98,6 +171,7 @@ public class Main extends ApplicationAdapter {
         // Устанавливаем начальное состояние и запускаем соответствующую музыку
         // Вместо прямого присваивания currentState, используем сеттер, чтобы централизовать логику смены музыки
         setCurrentState(GameState.MAIN_MENU, true); // true - для первоначального запуска музыки
+        gameOverSound = Gdx.audio.newSound(Gdx.files.internal("music/game_over.ogg"));
     }
 
     // Сеттер для currentState, который также управляет музыкой
@@ -111,6 +185,12 @@ public class Main extends ApplicationAdapter {
         }
         GameState previousState = this.currentState;
         this.currentState = newState;
+
+        // Если начинаем новую игру — обнуляем очки и таймер
+        if (newState == GameState.IN_GAME) {
+            score = 0;
+            scoreTimeAccumulator = 0;
+        }
 
         // Логика смены музыки при смене состояния
         if (previousState != newState || forcePlay) {
@@ -129,6 +209,8 @@ public class Main extends ApplicationAdapter {
             // Если gameplayMusic не загружена (например, из-за ошибки), ничего не играем
             // или можно попробовать загрузить музыку по умолчанию снова
             currentPlayingMusic = gameplayMusic;
+        }else {
+            currentPlayingMusic = null; // Никакая музыка не играет при Game Over
         }
 
         if (currentPlayingMusic != null) {
@@ -182,6 +264,15 @@ public class Main extends ApplicationAdapter {
         // if (currentPlayingMusic != null) currentPlayingMusic.setVolume(this.musicVolume);
     }
 
+    //максимальная сумма очков
+    private int getMaxScore() {
+        int max = 0;
+        for (int s : scoreHistory) {
+            if (s > max) max = s;
+        }
+        return max;
+    }
+
     @Override
     public void render() {
         // 1. Обработка ввода для изменения состояния игры (логика нажатия/отпускания)
@@ -209,11 +300,124 @@ public class Main extends ApplicationAdapter {
                 batch.end(); // Завершаем batch, начатый в начале render()
                 updateGame(deltaTime);
                 renderGame(); // renderGame() должен управлять своим batch
+                //отрисовка очков
+                batch.begin();
+                scoreFont.draw(batch, "Очки: " + score, 20, VIRTUAL_HEIGHT - 20);
+                batch.end();
+                ///
+                // После renderGame() рисуем хитбоксы ShapeRenderer'ом
+                if (debugHitboxes) {
+                    shapeRenderer.setProjectionMatrix(camera.combined);
+                    shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+                    shapeRenderer.setColor(Color.RED);
+
+                    Rectangle playerBounds = player.getBounds();
+                    shapeRenderer.rect(playerBounds.x, playerBounds.y, playerBounds.width, playerBounds.height);
+
+                    for (Obstacle obstacle : obstacles) {
+                        Rectangle obstacleBounds = obstacle.getBounds();
+                        shapeRenderer.rect(obstacleBounds.x, obstacleBounds.y, obstacleBounds.width, obstacleBounds.height);
+                    }
+
+                    shapeRenderer.end();
+                }
+                ///
                 return;       // Важно: выйти из render(), чтобы не вызвать внешний batch.end()
+            case GAME_OVER:
+                batch.draw(
+                    gameOverTexture,
+                    camera.position.x - camera.viewportWidth / 2f,
+                    0,
+                    camera.viewportWidth,
+                    camera.viewportHeight
+                );
+                //  Анимация проигрыша (яма или улей)
+                deathAnimationTime += deltaTime;
+
+                TextureRegion currentFrame = null;
+                if (showPitAnimation) {
+                    currentFrame = pitDeathAnimation.getKeyFrame(deathAnimationTime, true);
+                } else if (showBeehiveAnimation) {
+                    currentFrame = beehiveDeathAnimation.getKeyFrame(deathAnimationTime, true);
+                }
+
+                if (currentFrame != null) {
+                    float animationWidth = 200;
+                    float animationHeight = 200;
+
+                    float x = camera.position.x - animationWidth / 2f;
+                    float y = camera.viewportHeight / 2f - animationHeight / 2f;
+
+                    batch.draw(currentFrame, x, y, animationWidth, animationHeight);
+                }
+                // Отрисовка последнего и максимального счёта на экране смерти
+
+                // Установи белый цвет перед рисованием очков:
+                scoreFont.setColor(Color.WHITE);
+
+                int lastScore = scoreHistory.size > 0 ? scoreHistory.peek() : 0;
+                int bestScore = getMaxScore();
+
+                // Координаты
+                float leftX = camera.position.x - 400;    // слева от центра
+                float rightX = camera.position.x + 300; // справа от центра
+                float y = 700; // высота от нижнего края экрана
+
+                deathScoreFont.draw(batch, String.valueOf(lastScore), leftX, y);     // текущий счёт
+                deathScoreFont.draw(batch, String.valueOf(bestScore), rightX, y);    // рекорд
+                break;
         }
 
         batch.end(); // Этот batch.end() для MAIN_MENU и CHARACTER_SELECTION
+        // Для состояний MAIN_MENU, CHARACTER_SELECTION и GAME_OVER тоже можно отрисовать хитбоксы,
+        // если нужно. Например:
+        if (debugHitboxes && (currentState == GameState.MAIN_MENU || currentState == GameState.CHARACTER_SELECTION || currentState == GameState.GAME_OVER)) {
+            shapeRenderer.setProjectionMatrix(camera.combined);
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+            shapeRenderer.setColor(Color.RED);
+
+            Rectangle playerBounds = player.getBounds();
+            shapeRenderer.rect(playerBounds.x, playerBounds.y, playerBounds.width, playerBounds.height);
+
+            for (Obstacle obstacle : obstacles) {
+                Rectangle obstacleBounds = obstacle.getBounds();
+                shapeRenderer.rect(obstacleBounds.x, obstacleBounds.y, obstacleBounds.width, obstacleBounds.height);
+            }
+
+            shapeRenderer.end();
+        }
     }
+
+    private void checkCollision() {
+        for (Obstacle obstacle : obstacles) {
+            if (player.getBounds().overlaps(obstacle.getBounds())) {
+                boolean isPit = obstacle.getBounds().getHeight() < 150;
+
+                String path = isPit ?
+                    "game_over/pit_background.png" :
+                    "game_over/beehive_background.png";
+
+                gameOverTexture = new Texture(Gdx.files.internal(path));
+                gameOver = true;
+
+                // Сброс таймера и установка нужной анимации
+                deathAnimationTime = 0f;
+                showPitAnimation = isPit;
+                showBeehiveAnimation = !isPit;
+
+                //воспроизведение звука проигрыша
+                if (gameOverSound != null) {
+                    gameOverSound.play();
+                }
+                // Сохраняем текущие очки
+                scoreHistory.add(score);
+                // Переход в состояние GAME_OVER
+                setCurrentState(GameState.GAME_OVER);
+                break;
+            }
+        }
+    }
+
 
     // Метод для обновления визуального состояния кнопок (hover, pressed)
     // Этот метод раньше назывался updateInputStates
@@ -253,6 +457,15 @@ public class Main extends ApplicationAdapter {
                 obstacle.dispose();
             }
         }
+        checkCollision();
+
+        // Обновление очков: 10 очков в секунду
+        scoreTimeAccumulator += deltaTime;
+        while (scoreTimeAccumulator >= 0.1f) { // 0.1 секунды = 10 очков в секунду
+            score += 1;
+            scoreTimeAccumulator -= 0.1f;
+        }
+
     }
 
     private void spawnObstacle() {
@@ -268,8 +481,8 @@ public class Main extends ApplicationAdapter {
             obstacles.add(new Obstacle(spawnX, groundY+70, texturePath, height));
         } else {
             texturePath = "environment/pit.png";
-            height = 116f; //высота ямы
-            obstacles.add(new Obstacle(spawnX, groundY+30, texturePath, height));;
+            height = 110f; //высота ямы
+            obstacles.add(new Obstacle(spawnX, groundY+45, texturePath, height));;
         }
     }
 
@@ -283,17 +496,32 @@ public class Main extends ApplicationAdapter {
         batch.setProjectionMatrix(camera.combined);
         batch.begin(); // Начинаем batch ЗДЕСЬ, один раз для всей игровой сцены
 
-        // Background теперь просто рисует, не управляя batch
-        background.render(batch, camera);
-        //рендер препятствий
-        for (Obstacle obstacle : obstacles) {
-            obstacle.render(batch);
+        if (gameOver && gameOverTexture != null) {
+            // === РИСУЕМ ЭКРАН СМЕРТИ ===
+            // Отрисовываем соответствующее изображение на весь экран, в зависимости от препятствия
+            batch.draw(
+                gameOverTexture,
+                camera.position.x - camera.viewportWidth / 2f, // смещение камеры влево
+                0,
+                camera.viewportWidth,
+                camera.viewportHeight
+            );
+        } else {
+            // === РИСУЕМ ОБЫЧНУЮ ИГРОВУЮ СЦЕНУ ===
+
+            // 1. Фон
+            background.render(batch, camera);
+
+            // 2. Препятствия
+            for (Obstacle obstacle : obstacles) {
+                obstacle.render(batch);
+            }
+
+            // 3. Игрок
+            player.render(batch);
         }
 
-        // Игрок тоже просто рисует (убедись, что player.render тоже не управляет batch)
-        player.render(batch);
-
-        // Заканчиваем batch ЗДЕСЬ
+        // Заканчиваем batch ЗДЕСЬ (конец отрисовки)
         batch.end();
     }
 
@@ -391,6 +619,26 @@ public class Main extends ApplicationAdapter {
         for (Obstacle obstacle : obstacles) {
             obstacle.dispose();
         }
+        for (Object frameObj : pitDeathAnimation.getKeyFrames()) {
+            if (frameObj instanceof TextureRegion frame) {
+                frame.getTexture().dispose();
+            }
+        }
+        for (Object frameObj : beehiveDeathAnimation.getKeyFrames()) {
+            if (frameObj instanceof TextureRegion frame) {
+                frame.getTexture().dispose();
+            }
+        }
+
+        if (gameOverTexture != null) {
+            gameOverTexture.dispose();
+        }
+        shapeRenderer.dispose();
+        if (scoreFont != null) scoreFont.dispose();
+        if (deathScoreFont != null) deathScoreFont.dispose();
+        if (fontGenerator != null) fontGenerator.dispose();
+
+
         obstacles.clear();
     }
 

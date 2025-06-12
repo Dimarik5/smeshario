@@ -12,7 +12,9 @@ import com.badlogic.gdx.math.Rectangle;
 public class Player {
     private final Vector2 position;
     private final Rectangle bounds;
-    private final float boundsInset = 20f; // Уменьшаем хитбокс со всех сторон
+    private final float boundsInset = 123f; // Уменьшаем хитбокс со всех сторон
+    private final float boundsShiftX = 25f; // смещение центра хитбокса
+
     private final float spriteWidth;
     private final float spriteHeight;
     private final AnimationManager animationManager;
@@ -44,6 +46,7 @@ public class Player {
         this.isJumping = false;
         // При инициализации персонаж на земле и бежит, так что анимация бега должна быть активна
         // Ее stateTime уже 0f по умолчанию в AnimationManager
+        //хитбокс
         this.bounds = new Rectangle(
             position.x + boundsInset,
             position.y + boundsInset,
@@ -72,7 +75,7 @@ public class Player {
         // Передаем текущее состояние прыжка в AnimationManager
         animationManager.update(deltaTime, isJumping);
         //для хитбокса
-        bounds.setPosition(position.x + boundsInset, position.y + boundsInset);
+        bounds.setPosition(position.x + boundsShiftX + boundsInset, position.y + boundsInset);
     }
 
     public void jump() {

@@ -1,4 +1,3 @@
-// Main.java
 package com.mygdx.game;
 
 import java.util.Iterator;
@@ -42,7 +41,7 @@ public class Main extends ApplicationAdapter {
     }
     //метод для генерации интервала препятствий
     private float getRandomInterval() {
-        return 2f + random.nextFloat() * (4f - 1f); // от 1 до 4 секунд
+        return 1.5f + random.nextFloat(); // интервал рандома
     }
 
     private GameState currentState = GameState.MAIN_MENU;
@@ -265,13 +264,13 @@ public class Main extends ApplicationAdapter {
 
         if (random.nextBoolean()) {
             texturePath = "environment/beehive.png";
-            height = 380f;//высота улья
+            height = 286f;//высота улья
+            obstacles.add(new Obstacle(spawnX, groundY+70, texturePath, height));
         } else {
             texturePath = "environment/pit.png";
-            height = 120f; //высота ямы
+            height = 116f; //высота ямы
+            obstacles.add(new Obstacle(spawnX, groundY+30, texturePath, height));;
         }
-
-        obstacles.add(new Obstacle(spawnX, groundY, texturePath, height));;
     }
 
     private void renderGame() {
@@ -303,7 +302,7 @@ public class Main extends ApplicationAdapter {
     private void handleGameInputLogic() {
         // Игровой ввод (не UI), например, прыжок
         if (currentState == GameState.IN_GAME) {
-            if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
                 player.jump();
             }
         }

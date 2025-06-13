@@ -111,7 +111,7 @@ public class Main extends ApplicationAdapter {
 
         mainMenu = new MainMenu(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         characterSelectionScreen = new CharacterSelectionScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
-        settingsScreen = new SettingsScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+        settingsScreen = new SettingsScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT, musicVolume, soundVolume);
         background = new Background("environment/background.png");
         player = new Player(100, 150, VIRTUAL_HEIGHT);
 
@@ -218,7 +218,10 @@ public class Main extends ApplicationAdapter {
         if (currentPlayingMusic != null) {
             currentPlayingMusic.stop();
         }
-
+        if (currentPlayingMusic != null) {
+            currentPlayingMusic.setVolume(musicVolume);
+            settingsScreen.setCurrentMusic(currentPlayingMusic);
+        }
         if (currentState == GameState.MAIN_MENU || currentState == GameState.CHARACTER_SELECTION || currentState == GameState.SETTINGS) {
             currentPlayingMusic = menuMusic;
         } else if (currentState == GameState.IN_GAME) {
@@ -476,6 +479,7 @@ public class Main extends ApplicationAdapter {
             }
         }
 
+
         if (Gdx.input.justTouched()) {
             fingerIsCurrentlyDown = true;
             currentPressedButton = PressedButtonType.NONE;
@@ -566,8 +570,7 @@ public class Main extends ApplicationAdapter {
                             "music/tema_krosha.ogg"
                         };
 
-                        if (selectedMusic >= 0 && selectedMusic < musicPaths.length &&
-                            !currentGameplayMusicPath.equals(musicPaths[selectedMusic])) {
+                        if (selectedMusic >= 0 && selectedMusic < musicPaths.length && !currentGameplayMusicPath.equals(musicPaths[selectedMusic])) {
                             currentGameplayMusicPath = musicPaths[selectedMusic];
                             if (gameplayMusic != null) {
                                 gameplayMusic.dispose();
@@ -578,6 +581,7 @@ public class Main extends ApplicationAdapter {
                             if (currentState == GameState.IN_GAME) {
                                 playMusicForCurrentState();
                             }
+                            settingsScreen.setCurrentMusic(gameplayMusic);
                         }
                         setCurrentState(GameState.MAIN_MENU);
                     }

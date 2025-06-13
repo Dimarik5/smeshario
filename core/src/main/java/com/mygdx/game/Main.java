@@ -68,6 +68,7 @@ public class Main extends ApplicationAdapter {
     private boolean isRetryButtonHovered = false;
     private boolean isMenuButtonClicked = false;
     private boolean isRetryButtonClicked = false;
+    private Sound buttonPopSound;
     private static final float VIRTUAL_WIDTH = 1920;
     private static final float VIRTUAL_HEIGHT = 1080;
 
@@ -105,6 +106,8 @@ public class Main extends ApplicationAdapter {
         camera = new OrthographicCamera();
         camera.setToOrtho(false, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         obstacles = new Array<>();
+        // Загрузите звук для кнопок
+        buttonPopSound = Gdx.audio.newSound(Gdx.files.internal("music/button_pop.ogg"));
 
         mainMenu = new MainMenu(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         characterSelectionScreen = new CharacterSelectionScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
@@ -479,13 +482,17 @@ public class Main extends ApplicationAdapter {
             touchPosition.set(Gdx.input.getX(), Gdx.input.getY(), 0);
             camera.unproject(touchPosition);
 
+            // Воспроизведите звук при нажатии на любую кнопку
+            buttonPopSound.play(soundVolume);
+
             switch (currentState) {
                 case MAIN_MENU:
                     if (mainMenu.isNewGameClicked(touchPosition.x, touchPosition.y)) {
                         currentPressedButton = PressedButtonType.NEW_GAME;
                     } else if (mainMenu.isCharacterClicked(touchPosition.x, touchPosition.y)) {
                         currentPressedButton = PressedButtonType.CHARACTER;
-                    } else if (mainMenu.isSettingsClicked(touchPosition.x, touchPosition.y)) {currentPressedButton = PressedButtonType.SETTINGS;
+                    } else if (mainMenu.isSettingsClicked(touchPosition.x, touchPosition.y)) {
+                        currentPressedButton = PressedButtonType.SETTINGS;
                     } else if (mainMenu.isExitClicked(touchPosition.x, touchPosition.y)) {
                         currentPressedButton = PressedButtonType.EXIT;
                     }

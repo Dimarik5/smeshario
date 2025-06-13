@@ -8,15 +8,13 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-
-
 import com.badlogic.gdx.audio.Sound;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;//для отрисовки хитбокса
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.audio.Music; // Импорт для музыки
+import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -31,9 +29,9 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 
 public class Main extends ApplicationAdapter {
     private SpriteBatch batch;
-    private ShapeRenderer shapeRenderer; //это и ниже для отрисовки хитбокса
-    private boolean debugHitboxes = false; // Включаем/выключаем отладку отрисовки хитбокса
-    private Animation<TextureRegion> pitDeathAnimation; // это и 4 ниже для гифки на экране смерти
+    private ShapeRenderer shapeRenderer;
+    private boolean debugHitboxes = false;
+    private Animation<TextureRegion> pitDeathAnimation;
     private Animation<TextureRegion> beehiveDeathAnimation;
     private float deathAnimationTime = 0f;
     private boolean showPitAnimation = false;
@@ -47,7 +45,7 @@ public class Main extends ApplicationAdapter {
     private Random random = new Random();
     private Array<Obstacle> obstacles;
     private float obstacleTimer = 0f;
-    private float obstacleInterval = getRandomInterval(); //рандомно добавляем препятствия
+    private float obstacleInterval = getRandomInterval();
     private final float groundY = 150f;
     private boolean gameOver = false;
     private Texture gameOverTexture;
@@ -58,6 +56,19 @@ public class Main extends ApplicationAdapter {
     private BitmapFont deathScoreFont;
     private FreeTypeFontGenerator fontGenerator;
 
+    // New fields for buttons
+    private Texture menuButtonTexture;
+    private Texture menuButtonHoverTexture;
+    private Texture menuButtonClickTexture;
+    private Texture retryButtonTexture;
+    private Texture retryButtonHoverTexture;
+    private Texture retryButtonClickTexture;
+    private Rectangle menuButtonBounds;
+    private Rectangle retryButtonBounds;
+    private boolean isMenuButtonHovered = false;
+    private boolean isRetryButtonHovered = false;
+    private boolean isMenuButtonClicked = false;
+    private boolean isRetryButtonClicked = false;
 
     private static final float VIRTUAL_WIDTH = 1920;
     private static final float VIRTUAL_HEIGHT = 1080;
@@ -68,35 +79,33 @@ public class Main extends ApplicationAdapter {
         IN_GAME,
         GAME_OVER
     }
-    //метод для генерации интервала препятствий
+
     private float getRandomInterval() {
-        return 1.5f + random.nextFloat(); // интервал рандома
+        return 1.5f + random.nextFloat();
     }
 
     private GameState currentState = GameState.MAIN_MENU;
 
     private enum PressedButtonType {
         NONE,
-        NEW_GAME, CHARACTER, SETTINGS, EXIT, // Для MainMenu
-        BACK, LEFT_ARROW, RIGHT_ARROW       // Для CharacterSelectionScreen
+        NEW_GAME, CHARACTER, SETTINGS, EXIT,
+        BACK, LEFT_ARROW, RIGHT_ARROW,
+        MENU, RETRY
     }
     private PressedButtonType currentPressedButton = PressedButtonType.NONE;
-    private boolean fingerIsCurrentlyDown = false; // Отслеживать, нажат ли палец
-    private final Vector3 touchPosition = new Vector3(); // Для переиспользования, чтобы не создавать объект каждый кадр
+    private boolean fingerIsCurrentlyDown = false;
+    private final Vector3 touchPosition = new Vector3();
 
-    // ----- НОВЫЕ ПОЛЯ ДЛЯ МУЗЫКИ -----
     private Music menuMusic;
     private Music gameplayMusic;
-    private Music currentPlayingMusic; // Хранит ссылку на текущую играющую музыку
-
-    // Для будущих настроек: путь к текущей музыке геймплея
-    private String currentGameplayMusicPath = "music/tema_krosha.ogg"; // Замени на имя твоего файла по умолчанию
-    private float musicVolume = 0.5f; // Громкость музыки (0.0f - 1.0f), можно будет менять в настройках
+    private Music currentPlayingMusic;
+    private String currentGameplayMusicPath = "music/tema_krosha.ogg";
+    private float musicVolume = 0.5f;
 
     @Override
     public void create() {
         batch = new SpriteBatch();
-        shapeRenderer = new ShapeRenderer(); //для отрисовки хитбокса
+        shapeRenderer = new ShapeRenderer();
 
         camera = new OrthographicCamera();
         camera.setToOrtho(false, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
@@ -107,7 +116,8 @@ public class Main extends ApplicationAdapter {
         characterSelectionScreen = new CharacterSelectionScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         background = new Background("environment/background.png");
         player = new Player(100, 150, VIRTUAL_HEIGHT);
-        // Загрузка pit анимации
+
+        // Load death animations
         Array<TextureRegion> pitFrames = new Array<>();
         for (int i = 1; i <= 24; i++) {
             Texture frame = new Texture(Gdx.files.internal("game_over/pit_animation/" + i + ".png"));
@@ -115,7 +125,6 @@ public class Main extends ApplicationAdapter {
         }
         pitDeathAnimation = new Animation<>(1f / 24f, pitFrames, Animation.PlayMode.LOOP);
 
-        // Загрузка beehive анимации
         Array<TextureRegion> beehiveFrames = new Array<>();
         for (int i = 1; i <= 24; i++) {
             Texture frame = new Texture(Gdx.files.internal("game_over/beehive_animation/" + i + ".png"));
@@ -123,76 +132,82 @@ public class Main extends ApplicationAdapter {
         }
         beehiveDeathAnimation = new Animation<>(1f / 24f, beehiveFrames, Animation.PlayMode.LOOP);
 
-        // счетчик очков
+        // Load button textures
+        menuButtonTexture = new Texture(Gdx.files.internal("game_over/menu.png"));
+        menuButtonHoverTexture = new Texture(Gdx.files.internal("game_over/menu_hover.png"));
+        menuButtonClickTexture = new Texture(Gdx.files.internal("game_over/menu_click.png"));
+        retryButtonTexture = new Texture(Gdx.files.internal("game_over/retry.png"));
+        retryButtonHoverTexture = new Texture(Gdx.files.internal("game_over/retry_hover.png"));
+        retryButtonClickTexture = new Texture(Gdx.files.internal("game_over/retry_click.png"));
+
+        // Set button positions and sizes
+        float buttonWidth = 300;
+        float buttonHeight = 150;
+        float menuButtonX = VIRTUAL_WIDTH / 2 - buttonWidth - 50;
+        float retryButtonX = VIRTUAL_WIDTH / 2 + 50;
+        float buttonsY = 300;
+
+        menuButtonBounds = new Rectangle(menuButtonX, buttonsY, buttonWidth, buttonHeight);
+        retryButtonBounds = new Rectangle(retryButtonX, buttonsY, buttonWidth, buttonHeight);
+
+        // Initialize fonts
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/smeshariki2007fixed_regular.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
-        parameter.size = 70; // можешь изменить под нужный размер
+        parameter.size = 70;
         parameter.color = Color.valueOf("FF8000");
-        //чтоб буковки русские были
         parameter.characters = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ" +
             "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" +
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:!?()[]{}<>|/@#^&*-_=+\"'\\ \n";
 
         scoreFont = generator.generateFont(parameter);
 
-        // Дополнительный шрифт для экрана смерти
         FreeTypeFontGenerator.FreeTypeFontParameter deathFontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
         deathFontParameter.size = 90;
         deathFontParameter.color = Color.WHITE;
-        deathFontParameter.characters = parameter.characters; // те же символы
+        deathFontParameter.characters = parameter.characters;
         deathScoreFont = generator.generateFont(deathFontParameter);
 
-        fontGenerator = generator; // чтобы потом освободить
+        fontGenerator = generator;
 
-        //это для счетчика
         score = 0;
         scoreTimeAccumulator = 0;
         scoreHistory = new Array<>();
 
-
-        // Загрузка музыки
+        // Load sounds and music
         try {
-            menuMusic = Gdx.audio.newMusic(Gdx.files.internal("music/menu_music.ogg")); // Замени на имя твоего файла
+            menuMusic = Gdx.audio.newMusic(Gdx.files.internal("music/menu_music.ogg"));
             menuMusic.setLooping(true);
             menuMusic.setVolume(musicVolume);
 
-            // Загружаем музыку для геймплея по умолчанию
             gameplayMusic = Gdx.audio.newMusic(Gdx.files.internal(currentGameplayMusicPath));
             gameplayMusic.setLooping(true);
             gameplayMusic.setVolume(musicVolume);
 
         } catch (Exception e) {
             Gdx.app.error("MusicLoader", "Couldn't load music", e);
-            // Обработка ошибки: можно установить музыку в null или загрузить "запасной" вариант
             if (menuMusic == null) Gdx.app.log("MusicLoader", "Menu music failed to load.");
             if (gameplayMusic == null) Gdx.app.log("MusicLoader", "Gameplay music failed to load.");
         }
 
-        // Устанавливаем начальное состояние и запускаем соответствующую музыку
-        // Вместо прямого присваивания currentState, используем сеттер, чтобы централизовать логику смены музыки
-        setCurrentState(GameState.MAIN_MENU, true); // true - для первоначального запуска музыки
-        gameOverSound = Gdx.audio.newSound(Gdx.files.internal("music/game_over.ogg"));
+        gameOverSound = Gdx.audio.newSound(Gdx.files.internal("music/game_over.ogg"));setCurrentState(GameState.MAIN_MENU, true);
     }
 
-    // Сеттер для currentState, который также управляет музыкой
     private void setCurrentState(GameState newState) {
         setCurrentState(newState, false);
     }
 
     private void setCurrentState(GameState newState, boolean forcePlay) {
         if (this.currentState == newState && !forcePlay) {
-            return; // Состояние не изменилось, и не нужно форсировать перезапуск музыки
+            return;
         }
         GameState previousState = this.currentState;
         this.currentState = newState;
 
-        // Если начинаем новую игру — обнуляем очки и таймер
         if (newState == GameState.IN_GAME) {
             score = 0;
             scoreTimeAccumulator = 0;
         }
 
-        // Логика смены музыки при смене состояния
         if (previousState != newState || forcePlay) {
             playMusicForCurrentState();
         }
@@ -206,65 +221,34 @@ public class Main extends ApplicationAdapter {
         if (currentState == GameState.MAIN_MENU || currentState == GameState.CHARACTER_SELECTION) {
             currentPlayingMusic = menuMusic;
         } else if (currentState == GameState.IN_GAME) {
-            // Если gameplayMusic не загружена (например, из-за ошибки), ничего не играем
-            // или можно попробовать загрузить музыку по умолчанию снова
             currentPlayingMusic = gameplayMusic;
-        }else {
-            currentPlayingMusic = null; // Никакая музыка не играет при Game Over
+        } else {
+            currentPlayingMusic = null;
         }
 
         if (currentPlayingMusic != null) {
-            currentPlayingMusic.setLooping(true); // На всякий случай, если меняли
-            currentPlayingMusic.setVolume(musicVolume); // Устанавливаем актуальную громкость
+            currentPlayingMusic.setLooping(true);
+            currentPlayingMusic.setVolume(musicVolume);
             currentPlayingMusic.play();
         }
     }
 
-    // Метод для смены музыки геймплея (будет вызываться из настроек)
-    public void changeGameplayMusic(String newMusicFile) {
-        this.currentGameplayMusicPath = "music/" + newMusicFile; // Предполагаем, что файлы в папке music
-
-        if (gameplayMusic != null) {
-            boolean wasPlaying = gameplayMusic.isPlaying();
-            if (wasPlaying) gameplayMusic.stop();
-            gameplayMusic.dispose(); // Освобождаем ресурсы старой музыки
+    private void resetGame() {
+        for (Obstacle obstacle : obstacles) {
+            obstacle.dispose();
         }
+        obstacles.clear();
 
-        try {
-            gameplayMusic = Gdx.audio.newMusic(Gdx.files.internal(currentGameplayMusicPath));
-            gameplayMusic.setLooping(true);
-            gameplayMusic.setVolume(musicVolume);
+        player.resetPosition();
 
-            // Если мы сейчас в игре, то сразу обновляем currentPlayingMusic и запускаем новый трек
-            if (currentState == GameState.IN_GAME) {
-                if (currentPlayingMusic != null && currentPlayingMusic != menuMusic) { // Если играла старая геймплейная музыка
-                    currentPlayingMusic.stop(); // Останавливаем ее (хотя она уже должна быть gameplayMusic)
-                }
-                currentPlayingMusic = gameplayMusic;
-                if (currentPlayingMusic != null) { // Проверка на случай ошибки загрузки новой музыки
-                    currentPlayingMusic.play();
-                }
-            }
-        } catch (Exception e) {
-            Gdx.app.error("MusicLoader", "Couldn't load new gameplay music: " + currentGameplayMusicPath, e);
-            gameplayMusic = null; // или можно попытаться загрузить музыку по умолчанию
-            // Если currentPlayingMusic была старой gameplayMusic, она уже остановлена и dispose'нута
-            // Если мы в игре, то музыка просто перестанет играть или нужно вернуть музыку по умолчанию.
-            // Для простоты пока оставим так.
-        }
+        gameOver = false;
+        showPitAnimation = false;
+        showBeehiveAnimation = false;
+        deathAnimationTime = 0f;
+        obstacleTimer = 0f;
+        obstacleInterval = getRandomInterval();
     }
 
-    // Метод для изменения громкости (будет вызываться из настроек)
-    public void setMusicVolume(float volume) {
-        this.musicVolume = Math.max(0f, Math.min(1f, volume)); // Ограничиваем громкость от 0 до 1
-        if (menuMusic != null) menuMusic.setVolume(this.musicVolume);
-        if (gameplayMusic != null) gameplayMusic.setVolume(this.musicVolume);
-        // Если currentPlayingMusic - это одна из них, ее громкость уже обновится.
-        // Если нет, можно обновить явно:
-        // if (currentPlayingMusic != null) currentPlayingMusic.setVolume(this.musicVolume);
-    }
-
-    //максимальная сумма очков
     private int getMaxScore() {
         int max = 0;
         for (int s : scoreHistory) {
@@ -275,10 +259,7 @@ public class Main extends ApplicationAdapter {
 
     @Override
     public void render() {
-        // 1. Обработка ввода для изменения состояния игры (логика нажатия/отпускания)
         handleGameInputLogic();
-
-        // 2. Обновление визуальных состояний кнопок (hover/pressed)
         updateButtonVisualStates();
 
         float deltaTime = Gdx.graphics.getDeltaTime();
@@ -297,15 +278,13 @@ public class Main extends ApplicationAdapter {
                 characterSelectionScreen.render(batch);
                 break;
             case IN_GAME:
-                batch.end(); // Завершаем batch, начатый в начале render()
+                batch.end();
                 updateGame(deltaTime);
-                renderGame(); // renderGame() должен управлять своим batch
-                //отрисовка очков
+                renderGame();
                 batch.begin();
                 scoreFont.draw(batch, "Очки: " + score, 20, VIRTUAL_HEIGHT - 20);
                 batch.end();
-                ///
-                // После renderGame() рисуем хитбоксы ShapeRenderer'ом
+
                 if (debugHitboxes) {
                     shapeRenderer.setProjectionMatrix(camera.combined);
                     shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
@@ -321,8 +300,7 @@ public class Main extends ApplicationAdapter {
 
                     shapeRenderer.end();
                 }
-                ///
-                return;       // Важно: выйти из render(), чтобы не вызвать внешний batch.end()
+                return;
             case GAME_OVER:
                 batch.draw(
                     gameOverTexture,
@@ -331,46 +309,65 @@ public class Main extends ApplicationAdapter {
                     camera.viewportWidth,
                     camera.viewportHeight
                 );
-                //  Анимация проигрыша (яма или улей)
+
                 deathAnimationTime += deltaTime;
 
                 TextureRegion currentFrame = null;
                 if (showPitAnimation) {
-                    currentFrame = pitDeathAnimation.getKeyFrame(deathAnimationTime, true);
-                } else if (showBeehiveAnimation) {
+                    currentFrame = pitDeathAnimation.getKeyFrame(deathAnimationTime, true);} else if (showBeehiveAnimation) {
                     currentFrame = beehiveDeathAnimation.getKeyFrame(deathAnimationTime, true);
                 }
 
                 if (currentFrame != null) {
                     float animationWidth = 200;
                     float animationHeight = 200;
-
                     float x = camera.position.x - animationWidth / 2f;
                     float y = camera.viewportHeight / 2f - animationHeight / 2f;
-
                     batch.draw(currentFrame, x, y, animationWidth, animationHeight);
                 }
-                // Отрисовка последнего и максимального счёта на экране смерти
 
-                // Установи белый цвет перед рисованием очков:
+                // Draw buttons
+                Texture currentMenuButtonTexture;
+                if (isMenuButtonClicked) {
+                    currentMenuButtonTexture = menuButtonClickTexture;
+                } else if (isMenuButtonHovered) {
+                    currentMenuButtonTexture = menuButtonHoverTexture;
+                } else {
+                    currentMenuButtonTexture = menuButtonTexture;
+                }
+
+                Texture currentRetryButtonTexture;
+                if (isRetryButtonClicked) {
+                    currentRetryButtonTexture = retryButtonClickTexture;
+                } else if (isRetryButtonHovered) {
+                    currentRetryButtonTexture = retryButtonHoverTexture;
+                } else {
+                    currentRetryButtonTexture = retryButtonTexture;
+                }
+
+                batch.draw(currentMenuButtonTexture,
+                    menuButtonBounds.x, menuButtonBounds.y,
+                    menuButtonBounds.width, menuButtonBounds.height);
+                batch.draw(currentRetryButtonTexture,
+                    retryButtonBounds.x, retryButtonBounds.y,
+                    retryButtonBounds.width, retryButtonBounds.height);
+
+                // Draw scores
                 scoreFont.setColor(Color.WHITE);
-
                 int lastScore = scoreHistory.size > 0 ? scoreHistory.peek() : 0;
                 int bestScore = getMaxScore();
 
-                // Координаты
-                float leftX = camera.position.x - 400;    // слева от центра
-                float rightX = camera.position.x + 300; // справа от центра
-                float y = 700; // высота от нижнего края экрана
+                float leftX = camera.position.x - 400;
+                float rightX = camera.position.x + 300;
+                float y = 700;
 
-                deathScoreFont.draw(batch, String.valueOf(lastScore), leftX, y);     // текущий счёт
-                deathScoreFont.draw(batch, String.valueOf(bestScore), rightX, y);    // рекорд
+                deathScoreFont.draw(batch, String.valueOf(lastScore), leftX, y);
+                deathScoreFont.draw(batch, String.valueOf(bestScore), rightX, y);
                 break;
         }
 
-        batch.end(); // Этот batch.end() для MAIN_MENU и CHARACTER_SELECTION
-        // Для состояний MAIN_MENU, CHARACTER_SELECTION и GAME_OVER тоже можно отрисовать хитбоксы,
-        // если нужно. Например:
+        batch.end();
+
         if (debugHitboxes && (currentState == GameState.MAIN_MENU || currentState == GameState.CHARACTER_SELECTION || currentState == GameState.GAME_OVER)) {
             shapeRenderer.setProjectionMatrix(camera.combined);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
@@ -400,28 +397,20 @@ public class Main extends ApplicationAdapter {
                 gameOverTexture = new Texture(Gdx.files.internal(path));
                 gameOver = true;
 
-                // Сброс таймера и установка нужной анимации
                 deathAnimationTime = 0f;
                 showPitAnimation = isPit;
                 showBeehiveAnimation = !isPit;
 
-                //воспроизведение звука проигрыша
                 if (gameOverSound != null) {
                     gameOverSound.play();
                 }
-                // Сохраняем текущие очки
+
                 scoreHistory.add(score);
-                // Переход в состояние GAME_OVER
                 setCurrentState(GameState.GAME_OVER);
                 break;
             }
         }
-    }
-
-
-    // Метод для обновления визуального состояния кнопок (hover, pressed)
-    // Этот метод раньше назывался updateInputStates
-    private void updateButtonVisualStates() {
+    }private void updateButtonVisualStates() {
         touchPosition.set(Gdx.input.getX(), Gdx.input.getY(), 0);
         camera.unproject(touchPosition);
         boolean isTouched = Gdx.input.isTouched();
@@ -429,29 +418,36 @@ public class Main extends ApplicationAdapter {
         if (currentState == GameState.MAIN_MENU) {
             mainMenu.updateInput(touchPosition.x, touchPosition.y, isTouched);
         } else if (currentState == GameState.CHARACTER_SELECTION) {
-            // Предполагаем, что CharacterSelectionScreen имеет аналогичный метод updateInput
             characterSelectionScreen.updateInput(touchPosition.x, touchPosition.y, isTouched);
+        } else if (currentState == GameState.GAME_OVER) {
+            isMenuButtonHovered = menuButtonBounds.contains(touchPosition.x, touchPosition.y);
+            isRetryButtonHovered = retryButtonBounds.contains(touchPosition.x, touchPosition.y);
+
+            if (isTouched) {
+                isMenuButtonClicked = isMenuButtonHovered;
+                isRetryButtonClicked = isRetryButtonHovered;
+            } else {
+                isMenuButtonClicked = false;
+                isRetryButtonClicked = false;
+            }
         }
     }
 
     private void updateGame(float deltaTime) {
         background.update(deltaTime);
         player.update(deltaTime);
-        // Обновляем таймер и создаем новые препятствия
+
         obstacleTimer += deltaTime;
         if (obstacleTimer >= obstacleInterval) {
             obstacleTimer = 0;
             spawnObstacle();
-            obstacleInterval = getRandomInterval(); //перезадаем интервал для генерации
+            obstacleInterval = getRandomInterval();
         }
 
-        // Обновляем и удаляем пройденные препятствия
         for (Iterator<Obstacle> it = obstacles.iterator(); it.hasNext();) {
             Obstacle obstacle = it.next();
-            obstacle.update(deltaTime); // Нужно добавить метод update в класс Obstacle
+            obstacle.update(deltaTime);
 
-
-            // Удаляем препятствия, которые ушли за экран
             if (obstacle.getX() + obstacle.getWidth() < camera.position.x - camera.viewportWidth/2) {
                 it.remove();
                 obstacle.dispose();
@@ -459,86 +455,63 @@ public class Main extends ApplicationAdapter {
         }
         checkCollision();
 
-        // Обновление очков: 10 очков в секунду
         scoreTimeAccumulator += deltaTime;
-        while (scoreTimeAccumulator >= 0.1f) { // 0.1 секунды = 10 очков в секунду
+        while (scoreTimeAccumulator >= 0.1f) {
             score += 1;
             scoreTimeAccumulator -= 0.1f;
         }
-
     }
 
     private void spawnObstacle() {
         float spawnX = camera.position.x + camera.viewportWidth / 2;
 
-        // Случайный выбор между beehive и pit
-        String texturePath;
-        float height;
-
         if (random.nextBoolean()) {
-            texturePath = "environment/beehive.png";
-            height = 286f;//высота улья
+            String texturePath = "environment/beehive.png";
+            float height = 286f;
             obstacles.add(new Obstacle(spawnX, groundY+70, texturePath, height));
         } else {
-            texturePath = "environment/pit.png";
-            height = 110f; //высота ямы
-            obstacles.add(new Obstacle(spawnX, groundY+45, texturePath, height));;
+            String texturePath = "environment/pit.png";
+            float height = 110f;
+            obstacles.add(new Obstacle(spawnX, groundY+45, texturePath, height));
         }
     }
 
     private void renderGame() {
-        // camera.position.set(VIRTUAL_WIDTH/2, VIRTUAL_HEIGHT/2, 0); // Эта строка была в твоем исходном коде. Если камера игры статична, это нормально.
-        // Если камера должна следовать за игроком или двигаться, ее позицию нужно обновлять в updateGame.
-        camera.update(); // Обновляем камеру, если она может двигаться или меняться
-
-        // renderGame должен управлять своим SpriteBatch, так как он вызывается после batch.end()
-        // из основного цикла render() (когда currentState == IN_GAME)
+        camera.update();
         batch.setProjectionMatrix(camera.combined);
-        batch.begin(); // Начинаем batch ЗДЕСЬ, один раз для всей игровой сцены
+        batch.begin();
 
         if (gameOver && gameOverTexture != null) {
-            // === РИСУЕМ ЭКРАН СМЕРТИ ===
-            // Отрисовываем соответствующее изображение на весь экран, в зависимости от препятствия
             batch.draw(
                 gameOverTexture,
-                camera.position.x - camera.viewportWidth / 2f, // смещение камеры влево
+                camera.position.x - camera.viewportWidth / 2f,
                 0,
                 camera.viewportWidth,
                 camera.viewportHeight
             );
         } else {
-            // === РИСУЕМ ОБЫЧНУЮ ИГРОВУЮ СЦЕНУ ===
-
-            // 1. Фон
             background.render(batch, camera);
 
-            // 2. Препятствия
             for (Obstacle obstacle : obstacles) {
                 obstacle.render(batch);
             }
 
-            // 3. Игрок
             player.render(batch);
         }
 
-        // Заканчиваем batch ЗДЕСЬ (конец отрисовки)
         batch.end();
     }
 
-    // Этот метод раньше назывался handleInput. Переименован для ясности.
-    // Обрабатывает логику нажатий и отпусканий для изменения состояния игры.
     private void handleGameInputLogic() {
-        // Игровой ввод (не UI), например, прыжок
         if (currentState == GameState.IN_GAME) {
             if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
                 player.jump();
             }
         }
 
-        // Обработка НАЖАТИЯ (Touch Down) для UI
         if (Gdx.input.justTouched()) {
             fingerIsCurrentlyDown = true;
-            currentPressedButton = PressedButtonType.NONE; // Сброс на случай, если предыдущее нажатие не было обработано
+            currentPressedButton = PressedButtonType.NONE;
 
             touchPosition.set(Gdx.input.getX(), Gdx.input.getY(), 0);
             camera.unproject(touchPosition);
@@ -549,14 +522,12 @@ public class Main extends ApplicationAdapter {
                         currentPressedButton = PressedButtonType.NEW_GAME;
                     } else if (mainMenu.isCharacterClicked(touchPosition.x, touchPosition.y)) {
                         currentPressedButton = PressedButtonType.CHARACTER;
-                    } else if (mainMenu.isSettingsClicked(touchPosition.x, touchPosition.y)) { // Предполагаем, что isSettingsClicked есть
-                        currentPressedButton = PressedButtonType.SETTINGS;
+                    } else if (mainMenu.isSettingsClicked(touchPosition.x, touchPosition.y)) {currentPressedButton = PressedButtonType.SETTINGS;
                     } else if (mainMenu.isExitClicked(touchPosition.x, touchPosition.y)) {
                         currentPressedButton = PressedButtonType.EXIT;
                     }
                     break;
                 case CHARACTER_SELECTION:
-                    // Аналогично для CharacterSelectionScreen
                     if (characterSelectionScreen.isBackClicked(touchPosition.x, touchPosition.y)) {
                         currentPressedButton = PressedButtonType.BACK;
                     } else if (characterSelectionScreen.isLeftArrowClicked(touchPosition.x, touchPosition.y)) {
@@ -565,15 +536,19 @@ public class Main extends ApplicationAdapter {
                         currentPressedButton = PressedButtonType.RIGHT_ARROW;
                     }
                     break;
+                case GAME_OVER:
+                    if (menuButtonBounds.contains(touchPosition.x, touchPosition.y)) {
+                        currentPressedButton = PressedButtonType.MENU;
+                    } else if (retryButtonBounds.contains(touchPosition.x, touchPosition.y)) {
+                        currentPressedButton = PressedButtonType.RETRY;
+                    }
+                    break;
             }
         }
 
-        // Обработка ОТПУСКАНИЯ (Touch Up) для UI
-        // Проверяем, был ли палец нажат (fingerIsCurrentlyDown) и СЕЙЧАС он отпущен (!Gdx.input.isTouched())
         if (fingerIsCurrentlyDown && !Gdx.input.isTouched()) {
-            fingerIsCurrentlyDown = false; // Сбрасываем флаг нажатия
+            fingerIsCurrentlyDown = false;
 
-            // Получаем позицию отпускания
             touchPosition.set(Gdx.input.getX(), Gdx.input.getY(), 0);
             camera.unproject(touchPosition);
 
@@ -584,8 +559,7 @@ public class Main extends ApplicationAdapter {
                     } else if (currentPressedButton == PressedButtonType.CHARACTER && mainMenu.isCharacterClicked(touchPosition.x, touchPosition.y)) {
                         currentState = GameState.CHARACTER_SELECTION;
                     } else if (currentPressedButton == PressedButtonType.SETTINGS && mainMenu.isSettingsClicked(touchPosition.x, touchPosition.y)) {
-                        Gdx.app.log("MainMenu", "Settings button action!"); // Заглушка для настроек
-                        // currentState = GameState.SETTINGS_SCREEN; // Если есть экран настроек
+                        Gdx.app.log("MainMenu", "Settings button action!");
                     } else if (currentPressedButton == PressedButtonType.EXIT && mainMenu.isExitClicked(touchPosition.x, touchPosition.y)) {
                         Gdx.app.exit();
                     }
@@ -599,31 +573,40 @@ public class Main extends ApplicationAdapter {
                         characterSelectionScreen.nextCharacter();
                     }
                     break;
+                case GAME_OVER:
+                    if (currentPressedButton == PressedButtonType.MENU && menuButtonBounds.contains(touchPosition.x, touchPosition.y)) {
+                        resetGame();
+                        setCurrentState(GameState.MAIN_MENU);
+                    } else if (currentPressedButton == PressedButtonType.RETRY && retryButtonBounds.contains(touchPosition.x, touchPosition.y)) {
+                        resetGame();
+                        setCurrentState(GameState.IN_GAME);
+                    }
+                    break;
             }
-            currentPressedButton = PressedButtonType.NONE; // Сбрасываем после обработки, чтобы избежать повторного срабатывания
+            currentPressedButton = PressedButtonType.NONE;
         }
     }
 
     @Override
     public void dispose() {
         batch.dispose();
-        if (player != null) player.dispose();
-        if (background != null) background.dispose();
+        if (player != null) player.dispose();if (background != null) background.dispose();
         if (mainMenu != null) mainMenu.dispose();
         if (characterSelectionScreen != null) characterSelectionScreen.dispose();
 
-        // Освобождаем ресурсы музыки
         if (menuMusic != null) menuMusic.dispose();
         if (gameplayMusic != null) gameplayMusic.dispose();
-        // currentPlayingMusic - это ссылка на один из вышеуказанных объектов, ее отдельно освобождать не надо
+
         for (Obstacle obstacle : obstacles) {
             obstacle.dispose();
         }
+
         for (Object frameObj : pitDeathAnimation.getKeyFrames()) {
             if (frameObj instanceof TextureRegion frame) {
                 frame.getTexture().dispose();
             }
         }
+
         for (Object frameObj : beehiveDeathAnimation.getKeyFrames()) {
             if (frameObj instanceof TextureRegion frame) {
                 frame.getTexture().dispose();
@@ -633,20 +616,27 @@ public class Main extends ApplicationAdapter {
         if (gameOverTexture != null) {
             gameOverTexture.dispose();
         }
+
+        // Dispose button textures
+        menuButtonTexture.dispose();
+        menuButtonHoverTexture.dispose();
+        menuButtonClickTexture.dispose();
+        retryButtonTexture.dispose();
+        retryButtonHoverTexture.dispose();
+        retryButtonClickTexture.dispose();
+
         shapeRenderer.dispose();
         if (scoreFont != null) scoreFont.dispose();
         if (deathScoreFont != null) deathScoreFont.dispose();
         if (fontGenerator != null) fontGenerator.dispose();
-
+        if (gameOverSound != null) gameOverSound.dispose();
 
         obstacles.clear();
     }
 
-    // Дополнительно можно добавить методы жизненного цикла для музыки, если нужно
-    // например, при сворачивании приложения музыку можно ставить на паузу
     @Override
     public void pause() {
-        super.pause(); // Если наследуешься от ApplicationAdapter, можно оставить пустым или вызвать super
+        super.pause();
         if (currentPlayingMusic != null && currentPlayingMusic.isPlaying()) {
             currentPlayingMusic.pause();
         }
@@ -655,14 +645,9 @@ public class Main extends ApplicationAdapter {
     @Override
     public void resume() {
         super.resume();
-        // Возобновляем музыку, только если она была на паузе и должна играть в текущем состоянии
-        // Это более сложная логика, если пользователь мог изменить состояние, пока игра была свернута.
-        // Простой вариант - просто пытаться воспроизвести:
         if (currentPlayingMusic != null && !currentPlayingMusic.isPlaying()) {
-            // Перед play() убедиться, что именно эта музыка должна играть
-            // playMusicForCurrentState(); // Это может быть слишком грубо, лучше запоминать, была ли она на паузе
-            // Пока что просто:
             currentPlayingMusic.play();
         }
     }
 }
+

@@ -2,7 +2,6 @@ package com.mygdx.game;
 
 import java.util.Iterator;
 import java.util.Random;
-
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.math.Rectangle;
@@ -21,6 +20,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector3;
 import com.mygdx.game.menu.MainMenu;
 import com.mygdx.game.menu.CharacterSelectionScreen;
+import com.mygdx.game.menu.SettingsScreen;
 import com.mygdx.game.player.Player;
 import com.mygdx.game.world.Background;
 import com.mygdx.game.obstacles.Obstacle;
@@ -42,6 +42,7 @@ public class Main extends ApplicationAdapter {
     private MainMenu mainMenu;
     private Sound gameOverSound;
     private CharacterSelectionScreen characterSelectionScreen;
+    private SettingsScreen settingsScreen;
     private Random random = new Random();
     private Array<Obstacle> obstacles;
     private float obstacleTimer = 0f;
@@ -77,7 +78,8 @@ public class Main extends ApplicationAdapter {
         MAIN_MENU,
         CHARACTER_SELECTION,
         IN_GAME,
-        GAME_OVER
+        GAME_OVER,
+        SETTINGS
     }
 
     private float getRandomInterval() {
@@ -92,6 +94,7 @@ public class Main extends ApplicationAdapter {
         BACK, LEFT_ARROW, RIGHT_ARROW,
         MENU, RETRY
     }
+
     private PressedButtonType currentPressedButton = PressedButtonType.NONE;
     private boolean fingerIsCurrentlyDown = false;
     private final Vector3 touchPosition = new Vector3();
@@ -101,19 +104,18 @@ public class Main extends ApplicationAdapter {
     private Music currentPlayingMusic;
     private String currentGameplayMusicPath = "music/tema_krosha.ogg";
     private float musicVolume = 0.5f;
+    private float soundVolume = 0.5f;
 
     @Override
     public void create() {
-        batch = new SpriteBatch();
-        shapeRenderer = new ShapeRenderer();
-
+        batch = new SpriteBatch();shapeRenderer = new ShapeRenderer();
         camera = new OrthographicCamera();
         camera.setToOrtho(false, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
-
         obstacles = new Array<>();
 
         mainMenu = new MainMenu(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         characterSelectionScreen = new CharacterSelectionScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+        settingsScreen = new SettingsScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         background = new Background("environment/background.png");
         player = new Player(100, 150, VIRTUAL_HEIGHT);
 
@@ -146,7 +148,6 @@ public class Main extends ApplicationAdapter {
         float menuButtonX = VIRTUAL_WIDTH / 2 - buttonWidth - 50;
         float retryButtonX = VIRTUAL_WIDTH / 2 + 50;
         float buttonsY = 300;
-
         menuButtonBounds = new Rectangle(menuButtonX, buttonsY, buttonWidth, buttonHeight);
         retryButtonBounds = new Rectangle(retryButtonX, buttonsY, buttonWidth, buttonHeight);
 
@@ -157,8 +158,7 @@ public class Main extends ApplicationAdapter {
         parameter.color = Color.valueOf("FF8000");
         parameter.characters = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ" +
             "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" +
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:!?()[]{}<>|/@#^&*-_=+\"'\\ \n";
-
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:!?()[]{}\\<>|/@#^&*-_=+\"'\\ \n";
         scoreFont = generator.generateFont(parameter);
 
         FreeTypeFontGenerator.FreeTypeFontParameter deathFontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
@@ -166,7 +166,6 @@ public class Main extends ApplicationAdapter {
         deathFontParameter.color = Color.WHITE;
         deathFontParameter.characters = parameter.characters;
         deathScoreFont = generator.generateFont(deathFontParameter);
-
         fontGenerator = generator;
 
         score = 0;
@@ -182,14 +181,13 @@ public class Main extends ApplicationAdapter {
             gameplayMusic = Gdx.audio.newMusic(Gdx.files.internal(currentGameplayMusicPath));
             gameplayMusic.setLooping(true);
             gameplayMusic.setVolume(musicVolume);
-
         } catch (Exception e) {
-            Gdx.app.error("MusicLoader", "Couldn't load music", e);
-            if (menuMusic == null) Gdx.app.log("MusicLoader", "Menu music failed to load.");
+            Gdx.app.error("MusicLoader", "Couldn't load music", e);if (menuMusic == null) Gdx.app.log("MusicLoader", "Menu music failed to load.");
             if (gameplayMusic == null) Gdx.app.log("MusicLoader", "Gameplay music failed to load.");
         }
 
-        gameOverSound = Gdx.audio.newSound(Gdx.files.internal("music/game_over.ogg"));setCurrentState(GameState.MAIN_MENU, true);
+        gameOverSound = Gdx.audio.newSound(Gdx.files.internal("music/game_over.ogg"));
+        setCurrentState(GameState.MAIN_MENU, true);
     }
 
     private void setCurrentState(GameState newState) {
@@ -200,6 +198,7 @@ public class Main extends ApplicationAdapter {
         if (this.currentState == newState && !forcePlay) {
             return;
         }
+
         GameState previousState = this.currentState;
         this.currentState = newState;
 
@@ -218,7 +217,7 @@ public class Main extends ApplicationAdapter {
             currentPlayingMusic.stop();
         }
 
-        if (currentState == GameState.MAIN_MENU || currentState == GameState.CHARACTER_SELECTION) {
+        if (currentState == GameState.MAIN_MENU || currentState == GameState.CHARACTER_SELECTION || currentState == GameState.SETTINGS) {
             currentPlayingMusic = menuMusic;
         } else if (currentState == GameState.IN_GAME) {
             currentPlayingMusic = gameplayMusic;
@@ -238,9 +237,7 @@ public class Main extends ApplicationAdapter {
             obstacle.dispose();
         }
         obstacles.clear();
-
         player.resetPosition();
-
         gameOver = false;
         showPitAnimation = false;
         showBeehiveAnimation = false;
@@ -263,7 +260,6 @@ public class Main extends ApplicationAdapter {
         updateButtonVisualStates();
 
         float deltaTime = Gdx.graphics.getDeltaTime();
-
         Gdx.gl.glClearColor(0.1f, 0.1f, 0.1f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
@@ -277,6 +273,9 @@ public class Main extends ApplicationAdapter {
             case CHARACTER_SELECTION:
                 characterSelectionScreen.render(batch);
                 break;
+            case SETTINGS:
+                settingsScreen.render(batch);
+                break;
             case IN_GAME:
                 batch.end();
                 updateGame(deltaTime);
@@ -289,32 +288,28 @@ public class Main extends ApplicationAdapter {
                     shapeRenderer.setProjectionMatrix(camera.combined);
                     shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
                     shapeRenderer.setColor(Color.RED);
-
                     Rectangle playerBounds = player.getBounds();
                     shapeRenderer.rect(playerBounds.x, playerBounds.y, playerBounds.width, playerBounds.height);
-
                     for (Obstacle obstacle : obstacles) {
                         Rectangle obstacleBounds = obstacle.getBounds();
                         shapeRenderer.rect(obstacleBounds.x, obstacleBounds.y, obstacleBounds.width, obstacleBounds.height);
                     }
-
                     shapeRenderer.end();
                 }
                 return;
-            case GAME_OVER:
-                batch.draw(
-                    gameOverTexture,
-                    camera.position.x - camera.viewportWidth / 2f,
-                    0,
-                    camera.viewportWidth,
-                    camera.viewportHeight
-                );
+            case GAME_OVER:batch.draw(
+                gameOverTexture,
+                camera.position.x - camera.viewportWidth / 2f,
+                0,
+                camera.viewportWidth,
+                camera.viewportHeight
+            );
 
                 deathAnimationTime += deltaTime;
-
                 TextureRegion currentFrame = null;
                 if (showPitAnimation) {
-                    currentFrame = pitDeathAnimation.getKeyFrame(deathAnimationTime, true);} else if (showBeehiveAnimation) {
+                    currentFrame = pitDeathAnimation.getKeyFrame(deathAnimationTime, true);
+                } else if (showBeehiveAnimation) {
                     currentFrame = beehiveDeathAnimation.getKeyFrame(deathAnimationTime, true);
                 }
 
@@ -356,11 +351,9 @@ public class Main extends ApplicationAdapter {
                 scoreFont.setColor(Color.WHITE);
                 int lastScore = scoreHistory.size > 0 ? scoreHistory.peek() : 0;
                 int bestScore = getMaxScore();
-
                 float leftX = camera.position.x - 400;
                 float rightX = camera.position.x + 300;
                 float y = 700;
-
                 deathScoreFont.draw(batch, String.valueOf(lastScore), leftX, y);
                 deathScoreFont.draw(batch, String.valueOf(bestScore), rightX, y);
                 break;
@@ -368,19 +361,17 @@ public class Main extends ApplicationAdapter {
 
         batch.end();
 
-        if (debugHitboxes && (currentState == GameState.MAIN_MENU || currentState == GameState.CHARACTER_SELECTION || currentState == GameState.GAME_OVER)) {
+        if (debugHitboxes && (currentState == GameState.MAIN_MENU || currentState == GameState.CHARACTER_SELECTION ||
+            currentState == GameState.GAME_OVER || currentState == GameState.SETTINGS)) {
             shapeRenderer.setProjectionMatrix(camera.combined);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
             shapeRenderer.setColor(Color.RED);
-
             Rectangle playerBounds = player.getBounds();
             shapeRenderer.rect(playerBounds.x, playerBounds.y, playerBounds.width, playerBounds.height);
-
             for (Obstacle obstacle : obstacles) {
                 Rectangle obstacleBounds = obstacle.getBounds();
                 shapeRenderer.rect(obstacleBounds.x, obstacleBounds.y, obstacleBounds.width, obstacleBounds.height);
             }
-
             shapeRenderer.end();
         }
     }
@@ -389,14 +380,11 @@ public class Main extends ApplicationAdapter {
         for (Obstacle obstacle : obstacles) {
             if (player.getBounds().overlaps(obstacle.getBounds())) {
                 boolean isPit = obstacle.getBounds().getHeight() < 150;
-
                 String path = isPit ?
                     "game_over/pit_background.png" :
                     "game_over/beehive_background.png";
-
                 gameOverTexture = new Texture(Gdx.files.internal(path));
                 gameOver = true;
-
                 deathAnimationTime = 0f;
                 showPitAnimation = isPit;
                 showBeehiveAnimation = !isPit;
@@ -410,7 +398,9 @@ public class Main extends ApplicationAdapter {
                 break;
             }
         }
-    }private void updateButtonVisualStates() {
+    }
+
+    private void updateButtonVisualStates() {
         touchPosition.set(Gdx.input.getX(), Gdx.input.getY(), 0);
         camera.unproject(touchPosition);
         boolean isTouched = Gdx.input.isTouched();
@@ -419,6 +409,11 @@ public class Main extends ApplicationAdapter {
             mainMenu.updateInput(touchPosition.x, touchPosition.y, isTouched);
         } else if (currentState == GameState.CHARACTER_SELECTION) {
             characterSelectionScreen.updateInput(touchPosition.x, touchPosition.y, isTouched);
+        } else if (currentState == GameState.SETTINGS) {
+            settingsScreen.updateInput(touchPosition.x, touchPosition.y, isTouched);
+            if (settingsScreen.isBackClicked(touchPosition.x, touchPosition.y)) {
+                currentPressedButton = PressedButtonType.BACK;
+            }
         } else if (currentState == GameState.GAME_OVER) {
             isMenuButtonHovered = menuButtonBounds.contains(touchPosition.x, touchPosition.y);
             isRetryButtonHovered = retryButtonBounds.contains(touchPosition.x, touchPosition.y);
@@ -447,12 +442,12 @@ public class Main extends ApplicationAdapter {
         for (Iterator<Obstacle> it = obstacles.iterator(); it.hasNext();) {
             Obstacle obstacle = it.next();
             obstacle.update(deltaTime);
-
             if (obstacle.getX() + obstacle.getWidth() < camera.position.x - camera.viewportWidth/2) {
                 it.remove();
                 obstacle.dispose();
             }
         }
+
         checkCollision();
 
         scoreTimeAccumulator += deltaTime;
@@ -464,7 +459,6 @@ public class Main extends ApplicationAdapter {
 
     private void spawnObstacle() {
         float spawnX = camera.position.x + camera.viewportWidth / 2;
-
         if (random.nextBoolean()) {
             String texturePath = "environment/beehive.png";
             float height = 286f;
@@ -491,18 +485,14 @@ public class Main extends ApplicationAdapter {
             );
         } else {
             background.render(batch, camera);
-
             for (Obstacle obstacle : obstacles) {
                 obstacle.render(batch);
             }
-
             player.render(batch);
         }
 
         batch.end();
-    }
-
-    private void handleGameInputLogic() {
+    }private void handleGameInputLogic() {
         if (currentState == GameState.IN_GAME) {
             if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
                 player.jump();
@@ -512,7 +502,6 @@ public class Main extends ApplicationAdapter {
         if (Gdx.input.justTouched()) {
             fingerIsCurrentlyDown = true;
             currentPressedButton = PressedButtonType.NONE;
-
             touchPosition.set(Gdx.input.getX(), Gdx.input.getY(), 0);
             camera.unproject(touchPosition);
 
@@ -522,7 +511,8 @@ public class Main extends ApplicationAdapter {
                         currentPressedButton = PressedButtonType.NEW_GAME;
                     } else if (mainMenu.isCharacterClicked(touchPosition.x, touchPosition.y)) {
                         currentPressedButton = PressedButtonType.CHARACTER;
-                    } else if (mainMenu.isSettingsClicked(touchPosition.x, touchPosition.y)) {currentPressedButton = PressedButtonType.SETTINGS;
+                    } else if (mainMenu.isSettingsClicked(touchPosition.x, touchPosition.y)) {
+                        currentPressedButton = PressedButtonType.SETTINGS;
                     } else if (mainMenu.isExitClicked(touchPosition.x, touchPosition.y)) {
                         currentPressedButton = PressedButtonType.EXIT;
                     }
@@ -534,6 +524,11 @@ public class Main extends ApplicationAdapter {
                         currentPressedButton = PressedButtonType.LEFT_ARROW;
                     } else if (characterSelectionScreen.isRightArrowClicked(touchPosition.x, touchPosition.y)) {
                         currentPressedButton = PressedButtonType.RIGHT_ARROW;
+                    }
+                    break;
+                case SETTINGS:
+                    if (settingsScreen.isBackClicked(touchPosition.x, touchPosition.y)) {
+                        currentPressedButton = PressedButtonType.BACK;
                     }
                     break;
                 case GAME_OVER:
@@ -548,7 +543,6 @@ public class Main extends ApplicationAdapter {
 
         if (fingerIsCurrentlyDown && !Gdx.input.isTouched()) {
             fingerIsCurrentlyDown = false;
-
             touchPosition.set(Gdx.input.getX(), Gdx.input.getY(), 0);
             camera.unproject(touchPosition);
 
@@ -557,20 +551,57 @@ public class Main extends ApplicationAdapter {
                     if (currentPressedButton == PressedButtonType.NEW_GAME && mainMenu.isNewGameClicked(touchPosition.x, touchPosition.y)) {
                         setCurrentState(GameState.IN_GAME);
                     } else if (currentPressedButton == PressedButtonType.CHARACTER && mainMenu.isCharacterClicked(touchPosition.x, touchPosition.y)) {
-                        currentState = GameState.CHARACTER_SELECTION;
+                        setCurrentState(GameState.CHARACTER_SELECTION);
                     } else if (currentPressedButton == PressedButtonType.SETTINGS && mainMenu.isSettingsClicked(touchPosition.x, touchPosition.y)) {
-                        Gdx.app.log("MainMenu", "Settings button action!");
+                        setCurrentState(GameState.SETTINGS);
                     } else if (currentPressedButton == PressedButtonType.EXIT && mainMenu.isExitClicked(touchPosition.x, touchPosition.y)) {
                         Gdx.app.exit();
                     }
                     break;
                 case CHARACTER_SELECTION:
                     if (currentPressedButton == PressedButtonType.BACK && characterSelectionScreen.isBackClicked(touchPosition.x, touchPosition.y)) {
-                        currentState = GameState.MAIN_MENU;
+                        setCurrentState(GameState.MAIN_MENU);
                     } else if (currentPressedButton == PressedButtonType.LEFT_ARROW && characterSelectionScreen.isLeftArrowClicked(touchPosition.x, touchPosition.y)) {
                         characterSelectionScreen.previousCharacter();
                     } else if (currentPressedButton == PressedButtonType.RIGHT_ARROW && characterSelectionScreen.isRightArrowClicked(touchPosition.x, touchPosition.y)) {
                         characterSelectionScreen.nextCharacter();
+                    }
+                    break;
+                case SETTINGS:
+                    if (currentPressedButton == PressedButtonType.BACK && settingsScreen.isBackClicked(touchPosition.x, touchPosition.y)) {
+                        // Update music and sound volumes from settings
+                        musicVolume = settingsScreen.getMusicVolume();
+                        soundVolume = settingsScreen.getSoundVolume();
+
+                        // Update current music volume
+                        if (currentPlayingMusic != null) {
+                            currentPlayingMusic.setVolume(musicVolume);
+                        }
+
+                        // Update selected music if changed
+                        int selectedMusic = settingsScreen.getSelectedMusicIndex();
+                        String[] musicPaths = {
+                            "music/obormot.ogg",
+                            "music/pogonya.ogg",
+                            "music/tema_krosha.ogg"
+                        };
+
+                        if (selectedMusic >= 0 && selectedMusic < musicPaths.length &&
+                            !currentGameplayMusicPath.equals(musicPaths[selectedMusic])) {
+                            currentGameplayMusicPath = musicPaths[selectedMusic];
+                            if (gameplayMusic != null) {
+                                gameplayMusic.dispose();
+                            }
+                            gameplayMusic = Gdx.audio.newMusic(Gdx.files.internal(currentGameplayMusicPath));
+                            gameplayMusic.setLooping(true);
+                            gameplayMusic.setVolume(musicVolume);
+
+                            if (currentState == GameState.IN_GAME) {
+                                playMusicForCurrentState();
+                            }
+                        }
+
+                        setCurrentState(GameState.MAIN_MENU);
                     }
                     break;
                 case GAME_OVER:
@@ -583,6 +614,7 @@ public class Main extends ApplicationAdapter {
                     }
                     break;
             }
+
             currentPressedButton = PressedButtonType.NONE;
         }
     }
@@ -590,10 +622,11 @@ public class Main extends ApplicationAdapter {
     @Override
     public void dispose() {
         batch.dispose();
-        if (player != null) player.dispose();if (background != null) background.dispose();
+        if (player != null) player.dispose();
+        if (background != null) background.dispose();
         if (mainMenu != null) mainMenu.dispose();
         if (characterSelectionScreen != null) characterSelectionScreen.dispose();
-
+        if (settingsScreen != null) settingsScreen.dispose();
         if (menuMusic != null) menuMusic.dispose();
         if (gameplayMusic != null) gameplayMusic.dispose();
 

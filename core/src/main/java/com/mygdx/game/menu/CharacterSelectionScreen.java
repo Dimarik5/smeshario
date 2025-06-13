@@ -1,5 +1,7 @@
 package com.mygdx.game.menu;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
@@ -8,82 +10,65 @@ import java.util.List;
 
 public class CharacterSelectionScreen {
     private Texture background;
-
-    // Кнопка Back с состояниями
     private Texture backButton, backButtonHover, backButtonPressed;
     private Rectangle backBounds;
     private boolean isBackHovered = false;
     private boolean isBackPressed = false;
-
-    // Кнопки слайдера без состояний
     private Texture leftArrow;
     private Texture rightArrow;
     private Rectangle leftArrowBounds;
     private Rectangle rightArrowBounds;
-
     private List<Texture> characterTextures;
+    private List<Sound> characterSounds;
     private int currentCharacterIndex = 0;
     private float virtualWidth;
     private float virtualHeight;
+    private long currentSoundId = -1;
+    private boolean firstTimeOpened = true;
 
     public CharacterSelectionScreen(float virtualWidth, float virtualHeight) {
         this.virtualWidth = virtualWidth;
         this.virtualHeight = virtualHeight;
 
-        // Загрузка текстур
         background = new Texture("start/character/background.png");
-
-        // Кнопка Back с состояниями
         backButton = new Texture("start/back.png");
         backButtonHover = new Texture("start/back_hover.png");
         backButtonPressed = new Texture("start/back_click.png");
-
-        // Кнопки слайдера без состояний
         leftArrow = new Texture("start/character/buttons/left.png");
         rightArrow = new Texture("start/character/buttons/right.png");
 
-        // Текстуры персонажей
         characterTextures = new ArrayList<>();
         characterTextures.add(new Texture("start/character/krosh.png"));
         characterTextures.add(new Texture("start/character/nusha.png"));
         characterTextures.add(new Texture("start/character/barash.png"));
         characterTextures.add(new Texture("start/character/ezhik.png"));
 
+        characterSounds = new ArrayList<>();
+        characterSounds.add(Gdx.audio.newSound(Gdx.files.internal("music/krosh_phrase.ogg")));
+        characterSounds.add(Gdx.audio.newSound(Gdx.files.internal("music/nusha_phrase.ogg")));
+        characterSounds.add(Gdx.audio.newSound(Gdx.files.internal("music/barash_phrase.ogg")));
+        characterSounds.add(Gdx.audio.newSound(Gdx.files.internal("music/ezhik_phrase.ogg")));
+
         setupButtonBounds();
     }
 
     private void setupButtonBounds() {
-        float backButtonWidth = 300f;  // Увеличиваем ширину
-        float backButtonHeight = 120f; // Увеличиваем высоту
-        float backButtonX = 165f;       // Смещаем ближе к левому краю
-        float backButtonY = virtualHeight - backButtonHeight - 65f; // Смещаем ближе к верхнему краю
-
+        float backButtonWidth = 300f;
+        float backButtonHeight = 120f;
+        float backButtonX = 165f;
+        float backButtonY = virtualHeight - backButtonHeight - 65f;
         backBounds = new Rectangle(backButtonX, backButtonY, backButtonWidth, backButtonHeight);
 
-        float arrowWidth = 180f;    // Увеличиваем ширину стрелок
-        float arrowHeight = 180f;   // Увеличиваем высоту стрелок
-        float arrowYPosition = virtualHeight / 2 - arrowHeight / 2 - 35; // Центрируем по вертикали
-
-        // Левая стрелка - смещаем ближе к персонажу
-        leftArrowBounds = new Rectangle(
-            virtualWidth / 2 - 650f,  // Увеличиваем отступ от центра
-            arrowYPosition,
-            arrowWidth,
-            arrowHeight
-        );
-
-        // Правая стрелка - смещаем ближе к персонажу
-        rightArrowBounds = new Rectangle(
-            virtualWidth / 2 + 450f,  // Уменьшаем отступ от центра
-            arrowYPosition,
-            arrowWidth,
-            arrowHeight
-        );
+        float arrowWidth = 180f;
+        float arrowHeight = 180f;
+        float arrowYPosition = virtualHeight / 2 - arrowHeight / 2 - 35;
+        leftArrowBounds = new Rectangle(virtualWidth / 2 - 650f, arrowYPosition, arrowWidth, arrowHeight);
+        rightArrowBounds = new Rectangle(virtualWidth / 2 + 450f, arrowYPosition, arrowWidth, arrowHeight);
     }
 
     public void render(SpriteBatch batch) {
-        // Фон
-        batch.draw(background, 0, 0, virtualWidth, virtualHeight);// Персонаж
+        batch.draw(background, 0, 0, virtualWidth, virtualHeight);
+
         Texture currentCharacter = characterTextures.get(currentCharacterIndex);
         float charWidth = currentCharacter.getWidth() * 1f;
         float charHeight = currentCharacter.getHeight() * 1f;
@@ -91,26 +76,28 @@ public class CharacterSelectionScreen {
             (virtualWidth - charWidth) / 2,
             (virtualHeight - charHeight) / 2 - 63f,
             charWidth,
-            charHeight
-        );
+            charHeight);
 
-        // Кнопка Back с состояниями
         Texture backCurrent = backButton;
         if (isBackPressed) backCurrent = backButtonPressed;
         else if (isBackHovered) backCurrent = backButtonHover;
         batch.draw(backCurrent, backBounds.x, backBounds.y, backBounds.width, backBounds.height);
 
-        // Кнопки слайдера без состояний
         batch.draw(leftArrow, leftArrowBounds.x, leftArrowBounds.y, leftArrowBounds.width, leftArrowBounds.height);
         batch.draw(rightArrow, rightArrowBounds.x, rightArrowBounds.y, rightArrowBounds.width, rightArrowBounds.height);
     }
 
     public void updateInput(float touchX, float touchY, boolean isTouched) {
-        // Обработка только для кнопки Back
         isBackHovered = backBounds.contains(touchX, touchY);
-        if (isBackHovered && isTouched) isBackPressed = true;
-        else isBackPressed = false;
+
+        if (isBackHovered && isTouched) {
+            isBackPressed = true;
+            stopCurrentSound(); // Остановить звук при нажатии на кнопку "Назад"
+        } else {
+            isBackPressed = false;
+        }
     }
+
 
     public boolean isBackClicked(float touchX, float touchY) {
         return backBounds.contains(touchX, touchY);
@@ -125,11 +112,40 @@ public class CharacterSelectionScreen {
     }
 
     public void nextCharacter() {
+        stopCurrentSound();
         currentCharacterIndex = (currentCharacterIndex + 1) % characterTextures.size();
+        playCharacterSound();
     }
 
     public void previousCharacter() {
+        stopCurrentSound();
         currentCharacterIndex = (currentCharacterIndex - 1 + characterTextures.size()) % characterTextures.size();
+        playCharacterSound();
+    }
+
+    private void playCharacterSound() {
+        Sound sound = characterSounds.get(currentCharacterIndex);
+        currentSoundId = sound.play(1.0f);
+    }
+
+    public void playCurrentCharacterSound() {
+        if (!firstTimeOpened) {
+            playCharacterSound();
+        }
+    }
+
+    private void stopCurrentSound() {
+        if (currentSoundId != -1) {
+            Sound currentSound = characterSounds.get(currentCharacterIndex);
+            currentSound.stop(currentSoundId);
+            currentSoundId = -1;
+        }
+    }
+
+    public void reset() {
+        stopCurrentSound();
+        currentCharacterIndex = 0;
+        firstTimeOpened = false;
     }
 
     public int getSelectedCharacterIndex() {
@@ -137,14 +153,20 @@ public class CharacterSelectionScreen {
     }
 
     public void dispose() {
+        stopCurrentSound();
         background.dispose();
         backButton.dispose();
         backButtonHover.dispose();
         backButtonPressed.dispose();
         leftArrow.dispose();
         rightArrow.dispose();
+
         for (Texture texture : characterTextures) {
             texture.dispose();
+        }
+
+        for (Sound sound : characterSounds) {
+            if (sound != null) sound.dispose();
         }
     }
 }

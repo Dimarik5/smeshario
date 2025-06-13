@@ -56,8 +56,6 @@ public class Main extends ApplicationAdapter {
     private BitmapFont scoreFont;
     private BitmapFont deathScoreFont;
     private FreeTypeFontGenerator fontGenerator;
-
-    // New fields for buttons
     private Texture menuButtonTexture;
     private Texture menuButtonHoverTexture;
     private Texture menuButtonClickTexture;
@@ -70,7 +68,6 @@ public class Main extends ApplicationAdapter {
     private boolean isRetryButtonHovered = false;
     private boolean isMenuButtonClicked = false;
     private boolean isRetryButtonClicked = false;
-
     private static final float VIRTUAL_WIDTH = 1920;
     private static final float VIRTUAL_HEIGHT = 1080;
 
@@ -80,10 +77,6 @@ public class Main extends ApplicationAdapter {
         IN_GAME,
         GAME_OVER,
         SETTINGS
-    }
-
-    private float getRandomInterval() {
-        return 1.5f + random.nextFloat();
     }
 
     private GameState currentState = GameState.MAIN_MENU;
@@ -98,7 +91,6 @@ public class Main extends ApplicationAdapter {
     private PressedButtonType currentPressedButton = PressedButtonType.NONE;
     private boolean fingerIsCurrentlyDown = false;
     private final Vector3 touchPosition = new Vector3();
-
     private Music menuMusic;
     private Music gameplayMusic;
     private Music currentPlayingMusic;
@@ -108,7 +100,8 @@ public class Main extends ApplicationAdapter {
 
     @Override
     public void create() {
-        batch = new SpriteBatch();shapeRenderer = new ShapeRenderer();
+        batch = new SpriteBatch();
+        shapeRenderer = new ShapeRenderer();
         camera = new OrthographicCamera();
         camera.setToOrtho(false, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         obstacles = new Array<>();
@@ -158,7 +151,7 @@ public class Main extends ApplicationAdapter {
         parameter.color = Color.valueOf("FF8000");
         parameter.characters = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ" +
             "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" +
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:!?()[]{}\\<>|/@#^&*-_=+\"'\\ \n";
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:!?()[]{}\\\\<>|/@#^&*-_=+\\\"'\\\\ \n";
         scoreFont = generator.generateFont(parameter);
 
         FreeTypeFontGenerator.FreeTypeFontParameter deathFontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
@@ -177,12 +170,12 @@ public class Main extends ApplicationAdapter {
             menuMusic = Gdx.audio.newMusic(Gdx.files.internal("music/menu_music.ogg"));
             menuMusic.setLooping(true);
             menuMusic.setVolume(musicVolume);
-
             gameplayMusic = Gdx.audio.newMusic(Gdx.files.internal(currentGameplayMusicPath));
             gameplayMusic.setLooping(true);
             gameplayMusic.setVolume(musicVolume);
         } catch (Exception e) {
-            Gdx.app.error("MusicLoader", "Couldn't load music", e);if (menuMusic == null) Gdx.app.log("MusicLoader", "Menu music failed to load.");
+            Gdx.app.error("MusicLoader", "Couldn't load music", e);
+            if (menuMusic == null) Gdx.app.log("MusicLoader", "Menu music failed to load.");
             if (gameplayMusic == null) Gdx.app.log("MusicLoader", "Gameplay music failed to load.");
         }
 
@@ -205,6 +198,12 @@ public class Main extends ApplicationAdapter {
         if (newState == GameState.IN_GAME) {
             score = 0;
             scoreTimeAccumulator = 0;
+        } else if (newState == GameState.CHARACTER_SELECTION) {
+            characterSelectionScreen.reset();
+            // Воспроизводим звук только при переходе из главного меню
+            if (previousState == GameState.MAIN_MENU) {
+                characterSelectionScreen.playCurrentCharacterSound();
+            }
         }
 
         if (previousState != newState || forcePlay) {
@@ -297,13 +296,11 @@ public class Main extends ApplicationAdapter {
                     shapeRenderer.end();
                 }
                 return;
-            case GAME_OVER:batch.draw(
-                gameOverTexture,
-                camera.position.x - camera.viewportWidth / 2f,
-                0,
-                camera.viewportWidth,
-                camera.viewportHeight
-            );
+            case GAME_OVER:
+                batch.draw(gameOverTexture,
+                    camera.position.x - camera.viewportWidth / 2f,
+                    0,
+                    camera.viewportWidth,camera.viewportHeight);
 
                 deathAnimationTime += deltaTime;
                 TextureRegion currentFrame = null;
@@ -322,30 +319,13 @@ public class Main extends ApplicationAdapter {
                 }
 
                 // Draw buttons
-                Texture currentMenuButtonTexture;
-                if (isMenuButtonClicked) {
-                    currentMenuButtonTexture = menuButtonClickTexture;
-                } else if (isMenuButtonHovered) {
-                    currentMenuButtonTexture = menuButtonHoverTexture;
-                } else {
-                    currentMenuButtonTexture = menuButtonTexture;
-                }
+                Texture currentMenuButtonTexture = isMenuButtonClicked ? menuButtonClickTexture :
+                    (isMenuButtonHovered ? menuButtonHoverTexture : menuButtonTexture);
+                Texture currentRetryButtonTexture = isRetryButtonClicked ? retryButtonClickTexture :
+                    (isRetryButtonHovered ? retryButtonHoverTexture : retryButtonTexture);
 
-                Texture currentRetryButtonTexture;
-                if (isRetryButtonClicked) {
-                    currentRetryButtonTexture = retryButtonClickTexture;
-                } else if (isRetryButtonHovered) {
-                    currentRetryButtonTexture = retryButtonHoverTexture;
-                } else {
-                    currentRetryButtonTexture = retryButtonTexture;
-                }
-
-                batch.draw(currentMenuButtonTexture,
-                    menuButtonBounds.x, menuButtonBounds.y,
-                    menuButtonBounds.width, menuButtonBounds.height);
-                batch.draw(currentRetryButtonTexture,
-                    retryButtonBounds.x, retryButtonBounds.y,
-                    retryButtonBounds.width, retryButtonBounds.height);
+                batch.draw(currentMenuButtonTexture, menuButtonBounds.x, menuButtonBounds.y, menuButtonBounds.width, menuButtonBounds.height);
+                batch.draw(currentRetryButtonTexture, retryButtonBounds.x, retryButtonBounds.y, retryButtonBounds.width, retryButtonBounds.height);
 
                 // Draw scores
                 scoreFont.setColor(Color.WHITE);
@@ -358,7 +338,6 @@ public class Main extends ApplicationAdapter {
                 deathScoreFont.draw(batch, String.valueOf(bestScore), rightX, y);
                 break;
         }
-
         batch.end();
 
         if (debugHitboxes && (currentState == GameState.MAIN_MENU || currentState == GameState.CHARACTER_SELECTION ||
@@ -380,9 +359,7 @@ public class Main extends ApplicationAdapter {
         for (Obstacle obstacle : obstacles) {
             if (player.getBounds().overlaps(obstacle.getBounds())) {
                 boolean isPit = obstacle.getBounds().getHeight() < 150;
-                String path = isPit ?
-                    "game_over/pit_background.png" :
-                    "game_over/beehive_background.png";
+                String path = isPit ? "game_over/pit_background.png" : "game_over/beehive_background.png";
                 gameOverTexture = new Texture(Gdx.files.internal(path));
                 gameOver = true;
                 deathAnimationTime = 0f;
@@ -390,7 +367,7 @@ public class Main extends ApplicationAdapter {
                 showBeehiveAnimation = !isPit;
 
                 if (gameOverSound != null) {
-                    gameOverSound.play();
+                    gameOverSound.play(soundVolume);
                 }
 
                 scoreHistory.add(score);
@@ -417,7 +394,6 @@ public class Main extends ApplicationAdapter {
         } else if (currentState == GameState.GAME_OVER) {
             isMenuButtonHovered = menuButtonBounds.contains(touchPosition.x, touchPosition.y);
             isRetryButtonHovered = retryButtonBounds.contains(touchPosition.x, touchPosition.y);
-
             if (isTouched) {
                 isMenuButtonClicked = isMenuButtonHovered;
                 isRetryButtonClicked = isRetryButtonHovered;
@@ -431,8 +407,8 @@ public class Main extends ApplicationAdapter {
     private void updateGame(float deltaTime) {
         background.update(deltaTime);
         player.update(deltaTime);
-
         obstacleTimer += deltaTime;
+
         if (obstacleTimer >= obstacleInterval) {
             obstacleTimer = 0;
             spawnObstacle();
@@ -449,7 +425,6 @@ public class Main extends ApplicationAdapter {
         }
 
         checkCollision();
-
         scoreTimeAccumulator += deltaTime;
         while (scoreTimeAccumulator >= 0.1f) {
             score += 1;
@@ -476,13 +451,11 @@ public class Main extends ApplicationAdapter {
         batch.begin();
 
         if (gameOver && gameOverTexture != null) {
-            batch.draw(
-                gameOverTexture,
+            batch.draw(gameOverTexture,
                 camera.position.x - camera.viewportWidth / 2f,
                 0,
                 camera.viewportWidth,
-                camera.viewportHeight
-            );
+                camera.viewportHeight);
         } else {
             background.render(batch, camera);
             for (Obstacle obstacle : obstacles) {
@@ -490,9 +463,10 @@ public class Main extends ApplicationAdapter {
             }
             player.render(batch);
         }
-
         batch.end();
-    }private void handleGameInputLogic() {
+    }
+
+    private void handleGameInputLogic() {
         if (currentState == GameState.IN_GAME) {
             if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
                 player.jump();
@@ -511,8 +485,7 @@ public class Main extends ApplicationAdapter {
                         currentPressedButton = PressedButtonType.NEW_GAME;
                     } else if (mainMenu.isCharacterClicked(touchPosition.x, touchPosition.y)) {
                         currentPressedButton = PressedButtonType.CHARACTER;
-                    } else if (mainMenu.isSettingsClicked(touchPosition.x, touchPosition.y)) {
-                        currentPressedButton = PressedButtonType.SETTINGS;
+                    } else if (mainMenu.isSettingsClicked(touchPosition.x, touchPosition.y)) {currentPressedButton = PressedButtonType.SETTINGS;
                     } else if (mainMenu.isExitClicked(touchPosition.x, touchPosition.y)) {
                         currentPressedButton = PressedButtonType.EXIT;
                     }
@@ -595,12 +568,10 @@ public class Main extends ApplicationAdapter {
                             gameplayMusic = Gdx.audio.newMusic(Gdx.files.internal(currentGameplayMusicPath));
                             gameplayMusic.setLooping(true);
                             gameplayMusic.setVolume(musicVolume);
-
                             if (currentState == GameState.IN_GAME) {
                                 playMusicForCurrentState();
                             }
                         }
-
                         setCurrentState(GameState.MAIN_MENU);
                     }
                     break;
@@ -614,9 +585,12 @@ public class Main extends ApplicationAdapter {
                     }
                     break;
             }
-
             currentPressedButton = PressedButtonType.NONE;
         }
+    }
+
+    private float getRandomInterval() {
+        return 1.5f + random.nextFloat();
     }
 
     @Override
@@ -650,20 +624,18 @@ public class Main extends ApplicationAdapter {
             gameOverTexture.dispose();
         }
 
-        // Dispose button textures
         menuButtonTexture.dispose();
         menuButtonHoverTexture.dispose();
         menuButtonClickTexture.dispose();
         retryButtonTexture.dispose();
         retryButtonHoverTexture.dispose();
         retryButtonClickTexture.dispose();
-
         shapeRenderer.dispose();
+
         if (scoreFont != null) scoreFont.dispose();
         if (deathScoreFont != null) deathScoreFont.dispose();
         if (fontGenerator != null) fontGenerator.dispose();
         if (gameOverSound != null) gameOverSound.dispose();
-
         obstacles.clear();
     }
 
@@ -683,4 +655,3 @@ public class Main extends ApplicationAdapter {
         }
     }
 }
-

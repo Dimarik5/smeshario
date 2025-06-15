@@ -25,31 +25,32 @@ public class CharacterSelectionScreen {
     private float virtualHeight;
     private long currentSoundId = -1;
     private boolean firstTimeOpened = true;
+    private float soundVolume = 1.0f;
 
     public CharacterSelectionScreen(float virtualWidth, float virtualHeight) {
         this.virtualWidth = virtualWidth;
         this.virtualHeight = virtualHeight;
-
         background = new Texture("start/character/background.png");
         backButton = new Texture("start/back.png");
         backButtonHover = new Texture("start/back_hover.png");
         backButtonPressed = new Texture("start/back_click.png");
         leftArrow = new Texture("start/character/buttons/left.png");
         rightArrow = new Texture("start/character/buttons/right.png");
-
         characterTextures = new ArrayList<>();
         characterTextures.add(new Texture("start/character/krosh.png"));
         characterTextures.add(new Texture("start/character/nusha.png"));
         characterTextures.add(new Texture("start/character/barash.png"));
         characterTextures.add(new Texture("start/character/ezhik.png"));
-
         characterSounds = new ArrayList<>();
         characterSounds.add(Gdx.audio.newSound(Gdx.files.internal("music/krosh_phrase.ogg")));
         characterSounds.add(Gdx.audio.newSound(Gdx.files.internal("music/nusha_phrase.ogg")));
         characterSounds.add(Gdx.audio.newSound(Gdx.files.internal("music/barash_phrase.ogg")));
         characterSounds.add(Gdx.audio.newSound(Gdx.files.internal("music/ezhik_phrase.ogg")));
-
         setupButtonBounds();
+    }
+
+    public void setSoundVolume(float volume) {
+        this.soundVolume = volume;
     }
 
     private void setupButtonBounds() {
@@ -68,7 +69,6 @@ public class CharacterSelectionScreen {
 
     public void render(SpriteBatch batch) {
         batch.draw(background, 0, 0, virtualWidth, virtualHeight);
-
         Texture currentCharacter = characterTextures.get(currentCharacterIndex);
         float charWidth = currentCharacter.getWidth() * 1f;
         float charHeight = currentCharacter.getHeight() * 1f;
@@ -89,15 +89,13 @@ public class CharacterSelectionScreen {
 
     public void updateInput(float touchX, float touchY, boolean isTouched) {
         isBackHovered = backBounds.contains(touchX, touchY);
-
         if (isBackHovered && isTouched) {
             isBackPressed = true;
-            stopCurrentSound(); // Остановить звук при нажатии на кнопку "Назад"
+            stopCurrentSound();
         } else {
             isBackPressed = false;
         }
     }
-
 
     public boolean isBackClicked(float touchX, float touchY) {
         return backBounds.contains(touchX, touchY);
@@ -125,7 +123,7 @@ public class CharacterSelectionScreen {
 
     private void playCharacterSound() {
         Sound sound = characterSounds.get(currentCharacterIndex);
-        currentSoundId = sound.play(1.0f);
+        currentSoundId = sound.play(soundVolume);
     }
 
     public void playCurrentCharacterSound() {
@@ -160,11 +158,9 @@ public class CharacterSelectionScreen {
         backButtonPressed.dispose();
         leftArrow.dispose();
         rightArrow.dispose();
-
         for (Texture texture : characterTextures) {
             texture.dispose();
         }
-
         for (Sound sound : characterSounds) {
             if (sound != null) sound.dispose();
         }

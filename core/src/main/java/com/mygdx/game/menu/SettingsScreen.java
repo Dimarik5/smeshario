@@ -5,10 +5,9 @@ import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
+import com.mygdx.game.Main;
 
 public class SettingsScreen {
-
-    // Текстуры
     private Texture background;
     private Texture sliderBody;
     private Texture sliderController;
@@ -18,56 +17,44 @@ public class SettingsScreen {
     private Texture backButton;
     private Texture backButtonHover;
     private Texture backButtonPressed;
-
-    // Границы элементов
     private Rectangle musicSliderBounds;
     private Rectangle soundSliderBounds;
     private Rectangle[] musicChoiceBounds;
     private Rectangle backButtonBounds;
-
-    // Состояния
     private boolean isMusicSliderDragging = false;
     private boolean isSoundSliderDragging = false;
     private int selectedMusicIndex = 0;
     private boolean isBackHovered = false;
     private boolean isBackPressed = false;
-
-    // Позиции ползунков (0-1)
     private float musicVolume;
     private float soundVolume;
-
-    // Ссылка на текущую играющую музыку
     private Music currentMusic;
-
-    // Размеры виртуального экрана
     private float virtualWidth;
     private float virtualHeight;
+    private Main main;
 
-    public SettingsScreen(float virtualWidth, float virtualHeight, float initialMusicVolume, float initialSoundVolume) {
+    public SettingsScreen(float virtualWidth, float virtualHeight,
+                          float initialMusicVolume, float initialSoundVolume,
+                          Main main) {
         this.virtualWidth = virtualWidth;
         this.virtualHeight = virtualHeight;
         this.musicVolume = initialMusicVolume;
         this.soundVolume = initialSoundVolume;
+        this.main = main;
 
-        // Загрузка текстур
         background = new Texture("start/settings/background.png");
         sliderBody = new Texture("start/settings/slider_body.png");
         sliderController = new Texture("start/settings/slider_controller.png");
-
-        // Загрузка текстур музыки
         musicTextures = new Texture[] {
             new Texture("start/settings/music_playlist/obormot.png"),
             new Texture("start/settings/music_playlist/pogonya.png"),
             new Texture("start/settings/music_playlist/tema_krosha.png")
         };
-
         choiceBox = new Texture("start/settings/music_playlist/choice_box.png");
         choiceBoxSelected = new Texture("start/settings/music_playlist/choice_box_selected.png");
-
         backButton = new Texture("start/back.png");
         backButtonHover = new Texture("start/back_hover.png");
         backButtonPressed = new Texture("start/back_click.png");
-
         setupBounds();
     }
 
@@ -96,7 +83,6 @@ public class SettingsScreen {
         musicChoiceBounds = new Rectangle[3];
         float startY = virtualHeight * 0.3f;
         float spacing = 20f;
-
         for (int i = 0; i < 3; i++) {
             musicChoiceBounds[i] = new Rectangle(
                 virtualWidth / 2 - musicChoiceWidth / 2,
@@ -114,17 +100,14 @@ public class SettingsScreen {
         );
     }
 
-    public void render(SpriteBatch batch) {
-        batch.draw(background, 0, 0, virtualWidth, virtualHeight);// Отрисовка слайдеров
+    public void render(SpriteBatch batch) {batch.draw(background, 0, 0, virtualWidth, virtualHeight);
         batch.draw(sliderBody, musicSliderBounds.x, musicSliderBounds.y, musicSliderBounds.width, musicSliderBounds.height);
         float musicControllerX = musicSliderBounds.x + musicVolume * (musicSliderBounds.width - 30);
         batch.draw(sliderController, musicControllerX, musicSliderBounds.y - 10, 30, 50);
-
         batch.draw(sliderBody, soundSliderBounds.x, soundSliderBounds.y, soundSliderBounds.width, soundSliderBounds.height);
         float soundControllerX = soundSliderBounds.x + soundVolume * (soundSliderBounds.width - 30);
         batch.draw(sliderController, soundControllerX, soundSliderBounds.y - 10, 30, 50);
 
-        // Отрисовка выбора музыки
         for (int i = 0; i < 3; i++) {
             if (i == selectedMusicIndex) {
                 batch.draw(choiceBoxSelected, musicChoiceBounds[i].x - 50, musicChoiceBounds[i].y, 50, musicChoiceBounds[i].height);
@@ -134,7 +117,6 @@ public class SettingsScreen {
             batch.draw(musicTextures[i], musicChoiceBounds[i].x, musicChoiceBounds[i].y, musicChoiceBounds[i].width, musicChoiceBounds[i].height);
         }
 
-        // Отрисовка кнопки назад
         Texture currentBackTexture = backButton;
         if (isBackPressed) {
             currentBackTexture = backButtonPressed;
@@ -146,7 +128,6 @@ public class SettingsScreen {
 
     public void updateInput(float touchX, float touchY, boolean isTouched) {
         isBackHovered = backButtonBounds.contains(touchX, touchY);
-
         if (isBackHovered && isTouched) {
             isBackPressed = true;
         } else {
@@ -174,7 +155,6 @@ public class SettingsScreen {
             isSoundSliderDragging = false;
         }
 
-        // Обновление громкости музыки в реальном времени
         if (isMusicSliderDragging) {
             musicVolume = (touchX - musicSliderBounds.x) / musicSliderBounds.width;
             musicVolume = Math.max(0, Math.min(1, musicVolume));
@@ -186,6 +166,9 @@ public class SettingsScreen {
         if (isSoundSliderDragging) {
             soundVolume = (touchX - soundSliderBounds.x) / soundSliderBounds.width;
             soundVolume = Math.max(0, Math.min(1, soundVolume));
+            if (main != null) {
+                main.updateGlobalSoundVolume(soundVolume);
+            }
         }
     }
 

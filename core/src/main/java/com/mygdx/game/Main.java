@@ -96,26 +96,23 @@ public class Main extends ApplicationAdapter {
     private Music gameplayMusic;
     private Music currentPlayingMusic;
     private String currentGameplayMusicPath = "music/tema_krosha.ogg";
-    private float musicVolume = 0.5f;
-    private float soundVolume = 0.5f;
+    private float musicVolume = 1f;
+    private float soundVolume = 1f;
 
     @Override
     public void create() {
         batch = new SpriteBatch();
-        shapeRenderer = new ShapeRenderer();
-        camera = new OrthographicCamera();
+        shapeRenderer = new ShapeRenderer();camera = new OrthographicCamera();
         camera.setToOrtho(false, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         obstacles = new Array<>();
-        // Загрузите звук для кнопок
-        buttonPopSound = Gdx.audio.newSound(Gdx.files.internal("music/button_pop.ogg"));
 
+        buttonPopSound = Gdx.audio.newSound(Gdx.files.internal("music/button_pop.ogg"));
         mainMenu = new MainMenu(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         characterSelectionScreen = new CharacterSelectionScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
-        settingsScreen = new SettingsScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT, musicVolume, soundVolume);
+        settingsScreen = new SettingsScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT, musicVolume, soundVolume, this);
         background = new Background("environment/background.png");
         player = new Player(100, 150, VIRTUAL_HEIGHT);
 
-        // Load death animations
         Array<TextureRegion> pitFrames = new Array<>();
         for (int i = 1; i <= 24; i++) {
             Texture frame = new Texture(Gdx.files.internal("game_over/pit_animation/" + i + ".png"));
@@ -130,7 +127,6 @@ public class Main extends ApplicationAdapter {
         }
         beehiveDeathAnimation = new Animation<>(1f / 24f, beehiveFrames, Animation.PlayMode.LOOP);
 
-        // Load button textures
         menuButtonTexture = new Texture(Gdx.files.internal("game_over/menu.png"));
         menuButtonHoverTexture = new Texture(Gdx.files.internal("game_over/menu_hover.png"));
         menuButtonClickTexture = new Texture(Gdx.files.internal("game_over/menu_click.png"));
@@ -138,7 +134,6 @@ public class Main extends ApplicationAdapter {
         retryButtonHoverTexture = new Texture(Gdx.files.internal("game_over/retry_hover.png"));
         retryButtonClickTexture = new Texture(Gdx.files.internal("game_over/retry_click.png"));
 
-        // Set button positions and sizes
         float buttonWidth = 300;
         float buttonHeight = 150;
         float menuButtonX = VIRTUAL_WIDTH / 2 - buttonWidth - 50;
@@ -147,14 +142,13 @@ public class Main extends ApplicationAdapter {
         menuButtonBounds = new Rectangle(menuButtonX, buttonsY, buttonWidth, buttonHeight);
         retryButtonBounds = new Rectangle(retryButtonX, buttonsY, buttonWidth, buttonHeight);
 
-        // Initialize fonts
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/smeshariki2007fixed_regular.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
         parameter.size = 70;
         parameter.color = Color.valueOf("FF8000");
         parameter.characters = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ" +
             "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" +
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:!?()[]{}\\\\<>|/@#^&*-_=+\\\"'\\\\ \n";
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:!?()[]{}\\<>|/@#^&*-_=+\\\"'\\\\ \n";
         scoreFont = generator.generateFont(parameter);
 
         FreeTypeFontGenerator.FreeTypeFontParameter deathFontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
@@ -168,7 +162,6 @@ public class Main extends ApplicationAdapter {
         scoreTimeAccumulator = 0;
         scoreHistory = new Array<>();
 
-        // Load sounds and music
         try {
             menuMusic = Gdx.audio.newMusic(Gdx.files.internal("music/menu_music.ogg"));
             menuMusic.setLooping(true);
@@ -180,15 +173,26 @@ public class Main extends ApplicationAdapter {
             Gdx.app.error("MusicLoader", "Couldn't load music", e);
             if (menuMusic == null) Gdx.app.log("MusicLoader", "Menu music failed to load.");
             if (gameplayMusic == null) Gdx.app.log("MusicLoader", "Gameplay music failed to load.");
-        }
-
-        gameOverSound = Gdx.audio.newSound(Gdx.files.internal("music/game_over.ogg"));
+        }gameOverSound = Gdx.audio.newSound(Gdx.files.internal("music/game_over.ogg"));
         setCurrentState(GameState.MAIN_MENU, true);
     }
+
+    // В классе Main добавить в метод updateGlobalSoundVolume:
+    public void updateGlobalSoundVolume(float volume) {
+        this.soundVolume = volume;
+        if (characterSelectionScreen != null) {
+            characterSelectionScreen.setSoundVolume(volume);
+        }
+        if (player != null) {
+            player.setSoundVolume(volume); // Передаем громкость в игрока
+        }
+    }
+
 
     private void setCurrentState(GameState newState) {
         setCurrentState(newState, false);
     }
+
 
     private void setCurrentState(GameState newState, boolean forcePlay) {
         if (this.currentState == newState && !forcePlay) {
@@ -203,7 +207,6 @@ public class Main extends ApplicationAdapter {
             scoreTimeAccumulator = 0;
         } else if (newState == GameState.CHARACTER_SELECTION) {
             characterSelectionScreen.reset();
-            // Воспроизводим звук только при переходе из главного меню
             if (previousState == GameState.MAIN_MENU) {
                 characterSelectionScreen.playCurrentCharacterSound();
             }
@@ -218,10 +221,12 @@ public class Main extends ApplicationAdapter {
         if (currentPlayingMusic != null) {
             currentPlayingMusic.stop();
         }
+
         if (currentPlayingMusic != null) {
             currentPlayingMusic.setVolume(musicVolume);
             settingsScreen.setCurrentMusic(currentPlayingMusic);
         }
+
         if (currentState == GameState.MAIN_MENU || currentState == GameState.CHARACTER_SELECTION || currentState == GameState.SETTINGS) {
             currentPlayingMusic = menuMusic;
         } else if (currentState == GameState.IN_GAME) {
@@ -263,11 +268,9 @@ public class Main extends ApplicationAdapter {
     public void render() {
         handleGameInputLogic();
         updateButtonVisualStates();
-
         float deltaTime = Gdx.graphics.getDeltaTime();
         Gdx.gl.glClearColor(0.1f, 0.1f, 0.1f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
 
@@ -288,15 +291,13 @@ public class Main extends ApplicationAdapter {
                 batch.begin();
                 scoreFont.draw(batch, "Очки: " + score, 20, VIRTUAL_HEIGHT - 20);
                 batch.end();
-
                 if (debugHitboxes) {
                     shapeRenderer.setProjectionMatrix(camera.combined);
                     shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
                     shapeRenderer.setColor(Color.RED);
                     Rectangle playerBounds = player.getBounds();
                     shapeRenderer.rect(playerBounds.x, playerBounds.y, playerBounds.width, playerBounds.height);
-                    for (Obstacle obstacle : obstacles) {
-                        Rectangle obstacleBounds = obstacle.getBounds();
+                    for (Obstacle obstacle : obstacles) {Rectangle obstacleBounds = obstacle.getBounds();
                         shapeRenderer.rect(obstacleBounds.x, obstacleBounds.y, obstacleBounds.width, obstacleBounds.height);
                     }
                     shapeRenderer.end();
@@ -306,8 +307,7 @@ public class Main extends ApplicationAdapter {
                 batch.draw(gameOverTexture,
                     camera.position.x - camera.viewportWidth / 2f,
                     0,
-                    camera.viewportWidth,camera.viewportHeight);
-
+                    camera.viewportWidth, camera.viewportHeight);
                 deathAnimationTime += deltaTime;
                 TextureRegion currentFrame = null;
                 if (showPitAnimation) {
@@ -315,7 +315,6 @@ public class Main extends ApplicationAdapter {
                 } else if (showBeehiveAnimation) {
                     currentFrame = beehiveDeathAnimation.getKeyFrame(deathAnimationTime, true);
                 }
-
                 if (currentFrame != null) {
                     float animationWidth = 200;
                     float animationHeight = 200;
@@ -324,16 +323,13 @@ public class Main extends ApplicationAdapter {
                     batch.draw(currentFrame, x, y, animationWidth, animationHeight);
                 }
 
-                // Draw buttons
                 Texture currentMenuButtonTexture = isMenuButtonClicked ? menuButtonClickTexture :
                     (isMenuButtonHovered ? menuButtonHoverTexture : menuButtonTexture);
                 Texture currentRetryButtonTexture = isRetryButtonClicked ? retryButtonClickTexture :
                     (isRetryButtonHovered ? retryButtonHoverTexture : retryButtonTexture);
-
                 batch.draw(currentMenuButtonTexture, menuButtonBounds.x, menuButtonBounds.y, menuButtonBounds.width, menuButtonBounds.height);
                 batch.draw(currentRetryButtonTexture, retryButtonBounds.x, retryButtonBounds.y, retryButtonBounds.width, retryButtonBounds.height);
 
-                // Draw scores
                 scoreFont.setColor(Color.WHITE);
                 int lastScore = scoreHistory.size > 0 ? scoreHistory.peek() : 0;
                 int bestScore = getMaxScore();
@@ -371,12 +367,9 @@ public class Main extends ApplicationAdapter {
                 deathAnimationTime = 0f;
                 showPitAnimation = isPit;
                 showBeehiveAnimation = !isPit;
-
                 if (gameOverSound != null) {
                     gameOverSound.play(soundVolume);
-                }
-
-                scoreHistory.add(score);
+                }scoreHistory.add(score);
                 setCurrentState(GameState.GAME_OVER);
                 break;
             }
@@ -414,13 +407,11 @@ public class Main extends ApplicationAdapter {
         background.update(deltaTime);
         player.update(deltaTime);
         obstacleTimer += deltaTime;
-
         if (obstacleTimer >= obstacleInterval) {
             obstacleTimer = 0;
             spawnObstacle();
             obstacleInterval = getRandomInterval();
         }
-
         for (Iterator<Obstacle> it = obstacles.iterator(); it.hasNext();) {
             Obstacle obstacle = it.next();
             obstacle.update(deltaTime);
@@ -429,7 +420,6 @@ public class Main extends ApplicationAdapter {
                 obstacle.dispose();
             }
         }
-
         checkCollision();
         scoreTimeAccumulator += deltaTime;
         while (scoreTimeAccumulator >= 0.1f) {
@@ -455,7 +445,6 @@ public class Main extends ApplicationAdapter {
         camera.update();
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
-
         if (gameOver && gameOverTexture != null) {
             batch.draw(gameOverTexture,
                 camera.position.x - camera.viewportWidth / 2f,
@@ -479,28 +468,24 @@ public class Main extends ApplicationAdapter {
             }
         }
 
-
         if (Gdx.input.justTouched()) {
             fingerIsCurrentlyDown = true;
             currentPressedButton = PressedButtonType.NONE;
             touchPosition.set(Gdx.input.getX(), Gdx.input.getY(), 0);
             camera.unproject(touchPosition);
-
-            // Воспроизведите звук при нажатии на любую кнопку
             buttonPopSound.play(soundVolume);
 
-            switch (currentState) {
-                case MAIN_MENU:
-                    if (mainMenu.isNewGameClicked(touchPosition.x, touchPosition.y)) {
-                        currentPressedButton = PressedButtonType.NEW_GAME;
-                    } else if (mainMenu.isCharacterClicked(touchPosition.x, touchPosition.y)) {
-                        currentPressedButton = PressedButtonType.CHARACTER;
-                    } else if (mainMenu.isSettingsClicked(touchPosition.x, touchPosition.y)) {
-                        currentPressedButton = PressedButtonType.SETTINGS;
-                    } else if (mainMenu.isExitClicked(touchPosition.x, touchPosition.y)) {
-                        currentPressedButton = PressedButtonType.EXIT;
-                    }
-                    break;
+            switch (currentState) {case MAIN_MENU:
+                if (mainMenu.isNewGameClicked(touchPosition.x, touchPosition.y)) {
+                    currentPressedButton = PressedButtonType.NEW_GAME;
+                } else if (mainMenu.isCharacterClicked(touchPosition.x, touchPosition.y)) {
+                    currentPressedButton = PressedButtonType.CHARACTER;
+                } else if (mainMenu.isSettingsClicked(touchPosition.x, touchPosition.y)) {
+                    currentPressedButton = PressedButtonType.SETTINGS;
+                } else if (mainMenu.isExitClicked(touchPosition.x, touchPosition.y)) {
+                    currentPressedButton = PressedButtonType.EXIT;
+                }
+                break;
                 case CHARACTER_SELECTION:
                     if (characterSelectionScreen.isBackClicked(touchPosition.x, touchPosition.y)) {
                         currentPressedButton = PressedButtonType.BACK;
@@ -553,23 +538,16 @@ public class Main extends ApplicationAdapter {
                     break;
                 case SETTINGS:
                     if (currentPressedButton == PressedButtonType.BACK && settingsScreen.isBackClicked(touchPosition.x, touchPosition.y)) {
-                        // Update music and sound volumes from settings
                         musicVolume = settingsScreen.getMusicVolume();
-                        soundVolume = settingsScreen.getSoundVolume();
-
-                        // Update current music volume
                         if (currentPlayingMusic != null) {
                             currentPlayingMusic.setVolume(musicVolume);
                         }
-
-                        // Update selected music if changed
                         int selectedMusic = settingsScreen.getSelectedMusicIndex();
                         String[] musicPaths = {
                             "music/obormot.ogg",
                             "music/pogonya.ogg",
                             "music/tema_krosha.ogg"
                         };
-
                         if (selectedMusic >= 0 && selectedMusic < musicPaths.length && !currentGameplayMusicPath.equals(musicPaths[selectedMusic])) {
                             currentGameplayMusicPath = musicPaths[selectedMusic];
                             if (gameplayMusic != null) {
@@ -614,27 +592,22 @@ public class Main extends ApplicationAdapter {
         if (settingsScreen != null) settingsScreen.dispose();
         if (menuMusic != null) menuMusic.dispose();
         if (gameplayMusic != null) gameplayMusic.dispose();
-
         for (Obstacle obstacle : obstacles) {
             obstacle.dispose();
         }
-
         for (Object frameObj : pitDeathAnimation.getKeyFrames()) {
             if (frameObj instanceof TextureRegion frame) {
                 frame.getTexture().dispose();
             }
         }
-
         for (Object frameObj : beehiveDeathAnimation.getKeyFrames()) {
             if (frameObj instanceof TextureRegion frame) {
                 frame.getTexture().dispose();
             }
         }
-
         if (gameOverTexture != null) {
             gameOverTexture.dispose();
         }
-
         menuButtonTexture.dispose();
         menuButtonHoverTexture.dispose();
         menuButtonClickTexture.dispose();
@@ -642,18 +615,17 @@ public class Main extends ApplicationAdapter {
         retryButtonHoverTexture.dispose();
         retryButtonClickTexture.dispose();
         shapeRenderer.dispose();
-
         if (scoreFont != null) scoreFont.dispose();
         if (deathScoreFont != null) deathScoreFont.dispose();
         if (fontGenerator != null) fontGenerator.dispose();
         if (gameOverSound != null) gameOverSound.dispose();
+        if (buttonPopSound != null) buttonPopSound.dispose();
         obstacles.clear();
     }
 
     @Override
     public void pause() {
-        super.pause();
-        if (currentPlayingMusic != null && currentPlayingMusic.isPlaying()) {
+        super.pause();if (currentPlayingMusic != null && currentPlayingMusic.isPlaying()) {
             currentPlayingMusic.pause();
         }
     }
@@ -666,3 +638,4 @@ public class Main extends ApplicationAdapter {
         }
     }
 }
+

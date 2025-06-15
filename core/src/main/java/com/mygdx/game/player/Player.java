@@ -25,6 +25,7 @@ public class Player {
     private final float groundY;
 
     private final Sound jumpSound;
+    private float soundVolume = 1.0f; // Добавлено поле для громкости звука
 
     public Player(float x, float y, float screenHeight) {
         this.spriteHeight = 480;
@@ -45,11 +46,16 @@ public class Player {
         this.isJumping = false;
 
         this.bounds = new Rectangle(
-            position.x + boundsInset,
+            position.x + boundsShiftX + boundsInset,
             position.y + boundsInset,
             spriteWidth - 2 * boundsInset,
             spriteHeight - 2 * boundsInset
         );
+    }
+
+    // Добавлен метод для установки громкости звука
+    public void setSoundVolume(float volume) {
+        this.soundVolume = Math.max(0, Math.min(1, volume)); // Ограничиваем значение от 0 до 1
     }
 
     public void update(float deltaTime) {
@@ -74,7 +80,7 @@ public class Player {
             verticalVelocity = jumpVelocity;
             isJumping = true;
             animationManager.resetJumpingAnimation();
-            jumpSound.play();
+            jumpSound.play(soundVolume); // Используем текущую громкость при воспроизведении
         }
     }
 

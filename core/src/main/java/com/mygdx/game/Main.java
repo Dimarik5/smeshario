@@ -32,6 +32,10 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
  * Управляет всеми состояниями игры, рендерингом и логикой.
  */
 public class Main extends ApplicationAdapter {
+    // Для хранения текстур анимаций
+    private Array<Texture> pitDeathAnimationTextures;
+    private Array<Texture> beehiveDeathAnimationTextures;
+
     // Графические компоненты
     private SpriteBatch batch;
     private ShapeRenderer shapeRenderer; //для отрисовки хитбокса
@@ -187,19 +191,25 @@ public class Main extends ApplicationAdapter {
      * Загружает анимации смерти
      */
     private void loadDeathAnimations() {
+        // Инициализируем массивы для хранения текстур
+        pitDeathAnimationTextures = new Array<>();
+        beehiveDeathAnimationTextures = new Array<>();
+
         // Анимация смерти в яме
         Array<TextureRegion> pitFrames = new Array<>();
         for (int i = 1; i <= 24; i++) {
-            Texture frame = new Texture(Gdx.files.internal("game_over/pit_animation/" + i + ".png"));
-            pitFrames.add(new TextureRegion(frame));
+            Texture frameTexture = new Texture(Gdx.files.internal("game_over/pit_animation/" + i + ".png"));
+            pitDeathAnimationTextures.add(frameTexture);
+            pitFrames.add(new TextureRegion(frameTexture));
         }
         pitDeathAnimation = new Animation<>(1f / 24f, pitFrames, Animation.PlayMode.LOOP);
 
         // Анимация смерти от улья
         Array<TextureRegion> beehiveFrames = new Array<>();
         for (int i = 1; i <= 24; i++) {
-            Texture frame = new Texture(Gdx.files.internal("game_over/beehive_animation/" + i + ".png"));
-            beehiveFrames.add(new TextureRegion(frame));
+            Texture frameTexture = new Texture(Gdx.files.internal("game_over/beehive_animation/" + i + ".png"));
+            beehiveDeathAnimationTextures.add(frameTexture);
+            beehiveFrames.add(new TextureRegion(frameTexture));
         }
         beehiveDeathAnimation = new Animation<>(1f / 24f, beehiveFrames, Animation.PlayMode.LOOP);
     }
@@ -330,6 +340,15 @@ public class Main extends ApplicationAdapter {
      * Воспроизводит музыку в соответствии с текущим состоянием игры
      */
     private void playMusicForCurrentState() {
+        // Если игра окончена, останавливаем любую играющую музыку и выходим.
+        if (currentState == GameState.GAME_OVER) {
+            if (currentPlayingMusic != null) {
+                currentPlayingMusic.stop();
+            }
+            currentPlayingMusic = null; // Устанавливаем в null, чтобы ничего не играло
+            return; // Выйти из метода, чтобы не выполнился код ниже
+        }
+
         if (currentState == GameState.IN_GAME) {
             // Если текущее состояние - игра, и играет меню-музыка, останавливаем её
             if (currentPlayingMusic == menuMusic) {
@@ -489,8 +508,8 @@ public class Main extends ApplicationAdapter {
         }
 
         if (currentFrame != null) {
-            float animationWidth = 200;
-            float animationHeight = 200;
+            float animationWidth = 354;
+            float animationHeight = 240;
             float x = camera.position.x - animationWidth / 2f;
             float y = camera.viewportHeight / 2f - animationHeight / 2f;
             // Отрисовка последнего и максимального счёта на экране смерти
@@ -864,8 +883,16 @@ public class Main extends ApplicationAdapter {
         }
 
         // Освобождение ресурсов анимаций смерти
-        disposeAnimationFrames(pitDeathAnimation);
-        disposeAnimationFrames(beehiveDeathAnimation);
+        if (pitDeathAnimationTextures != null) {
+            for (Texture texture : pitDeathAnimationTextures) {
+                texture.dispose();
+            }
+        }
+        if (beehiveDeathAnimationTextures != null) {
+            for (Texture texture : beehiveDeathAnimationTextures) {
+                texture.dispose();
+            }
+        }
 
         // Освобождение текстур
         if (gameOverTexture != null) {
@@ -889,18 +916,6 @@ public class Main extends ApplicationAdapter {
         if (buttonPopSound != null) buttonPopSound.dispose();
 
         obstacles.clear();
-    }
-
-    /**
-     * Освобождает ресурсы кадров анимации
-     * @param animation анимация для освобождения
-     */
-    private void disposeAnimationFrames(Animation<TextureRegion> animation) {
-        for (Object frameObj : animation.getKeyFrames()) {
-            if (frameObj instanceof TextureRegion frame) {
-                frame.getTexture().dispose();
-            }
-        }
     }
 
     /**

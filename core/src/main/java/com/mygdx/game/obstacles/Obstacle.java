@@ -8,12 +8,12 @@ import com.badlogic.gdx.math.Rectangle;
 public class Obstacle {
     private final Texture texture;
     private float x;
-    private final float y;
-    private final float width;
-    private final float height;
-    private final Rectangle bounds;
-    private final float boundsInsetX = 55f; // Уменьшает ширину хитбокса
-    private final float boundsInsetY = 30f; // Уменьшает высоту хитбокса
+    private float y;
+    private float width;
+    private float height;
+    private Rectangle bounds;
+    private float boundsInsetX; // Уменьшает ширину хитбокса
+    private float boundsInsetY = 30f; // Уменьшает высоту хитбокса
     private final float speed = 960f; // Скорость движения (должна совпадать со скоростью фона)
 
     public Obstacle(float x, float y, String texturePath, float height) {
@@ -24,14 +24,24 @@ public class Obstacle {
         float aspectRatio = texture.getWidth() / (float) texture.getHeight();
         this.width = height * aspectRatio;
         //штука для хитбокса
-        this.bounds = new Rectangle(
-            x + boundsInsetX,
-            y + boundsInsetY,
-            width - 2 * boundsInsetX,
-            height - 2 * boundsInsetY
-        );
-
-
+        if (texturePath == "environment/beehive.png") {
+            boundsInsetX = 55f;
+            this.bounds = new Rectangle(
+                x + boundsInsetX,
+                y + boundsInsetY,
+                width - 2 * boundsInsetX,
+                height - 2 * boundsInsetY
+            );
+        }
+        if (texturePath == "environment/pit.png") {
+            boundsInsetX = 140f;
+            this.bounds = new Rectangle(
+                x - boundsInsetX,
+                y + boundsInsetY,
+                width - 2 * boundsInsetX,
+                height - 2 * boundsInsetY
+            );
+        }
     }
 
     public void update(float deltaTime) {

@@ -17,16 +17,19 @@ public class SettingsScreen {
     private Texture backButton;
     private Texture backButtonHover;
     private Texture backButtonPressed;
+
     private Rectangle musicSliderBounds;
     private Rectangle soundSliderBounds;
     private Rectangle[] musicChoiceBounds;
-    private Rectangle[] musicSelectionButtonBounds; // Новый прямоугольник для кнопок выбора
+    private Rectangle[] musicSelectionButtonBounds;
     private Rectangle backButtonBounds;
+
     private boolean isMusicSliderDragging = false;
     private boolean isSoundSliderDragging = false;
     private int selectedMusicIndex = 0;
     private boolean isBackHovered = false;
     private boolean isBackPressed = false;
+
     private float musicVolume;
     private float soundVolume;
     private Music currentMusic;
@@ -43,16 +46,20 @@ public class SettingsScreen {
         this.soundVolume = initialSoundVolume;
         this.main = main;
 
+        // Загрузка текстур с исходным масштабом
         background = new Texture("start/settings/background.png");
         sliderBody = new Texture("start/settings/slider_body.png");
         sliderController = new Texture("start/settings/slider_controller.png");
+
         musicTextures = new Texture[] {
-            new Texture("start/settings/music_playlist/obormot.png"),
+            new Texture("start/settings/music_playlist/tema_krosha.png"),
             new Texture("start/settings/music_playlist/pogonya.png"),
-            new Texture("start/settings/music_playlist/tema_krosha.png")
+            new Texture("start/settings/music_playlist/obormot.png")
         };
+
         choiceBox = new Texture("start/settings/music_playlist/choice_box.png");
         choiceBoxSelected = new Texture("start/settings/music_playlist/choice_box_selected.png");
+
         backButton = new Texture("start/back.png");
         backButtonHover = new Texture("start/back_hover.png");
         backButtonPressed = new Texture("start/back_click.png");
@@ -61,32 +68,48 @@ public class SettingsScreen {
     }
 
     private void setupBounds() {
+        // Размеры ползунков (сохраняем исходные размеры текстур)
         float sliderWidth = 400f;
         float sliderHeight = 30f;
-        float musicChoiceWidth = 300f;
-        float musicChoiceHeight = 80f;
-        float backButtonWidth = 200f;
-        float backButtonHeight = 80f;
 
+        // Размеры элементов выбора музыки
+        float musicChoiceWidth = 740f;
+        float musicChoiceHeight = 120f;
+        float choiceBoxWidth = 73f;
+        float choiceBoxHeight = 73f;
+
+        // Размеры кнопки "Назад"
+        float backButtonWidth = 300f;
+        float backButtonHeight = 120f;
+
+        // Расположение ползунка для музыки (левая половина экрана)
+        float sliderOffset = 80f;
         musicSliderBounds = new Rectangle(
-            virtualWidth / 2 - sliderWidth / 2,
-            virtualHeight * 0.6f,
+            virtualWidth / 4 - sliderWidth / 2 + sliderOffset,
+            virtualHeight * 0.66f,
             sliderWidth,
             sliderHeight
         );
 
+        // Расположение ползунка для звука (правая половина экрана)
+        float soundSliderOffset = 75f;
         soundSliderBounds = new Rectangle(
-            virtualWidth / 2 - sliderWidth / 2,
-            virtualHeight * 0.5f,
+            virtualWidth * 3/4 - sliderWidth / 2 - soundSliderOffset,
+            virtualHeight * 0.66f,
             sliderWidth,
             sliderHeight
         );
 
-        musicChoiceBounds = new Rectangle[3];musicSelectionButtonBounds = new Rectangle[3]; // Инициализация массива для кнопок выбора
-        float startY = virtualHeight * 0.3f;
+        // Расположение элементов выбора музыки
+        // Расположение элементов выбора музыки
+        musicChoiceBounds = new Rectangle[3];
+        musicSelectionButtonBounds = new Rectangle[3];
+        float startY = virtualHeight * 0.35f;
         float spacing = 20f;
+        float leftPadding = 25f; // Отступ от левого края прямоугольника
 
         for (int i = 0; i < 3; i++) {
+            // Прямоугольник для фона элемента выбора музыки
             musicChoiceBounds[i] = new Rectangle(
                 virtualWidth / 2 - musicChoiceWidth / 2,
                 startY - i * (musicChoiceHeight + spacing),
@@ -94,64 +117,95 @@ public class SettingsScreen {
                 musicChoiceHeight
             );
 
-            // Прямоугольник для квадратной кнопки выбора (50x50)
+            // Кнопка выбора (чекбокс) - теперь слева от текста, центрирована по высоте
             musicSelectionButtonBounds[i] = new Rectangle(
-                musicChoiceBounds[i].x - 50, // Расположение слева от названия песни
-                musicChoiceBounds[i].y,
-                50,
-                musicChoiceBounds[i].height
+                musicChoiceBounds[i].x + leftPadding, // слева с отступом
+                musicChoiceBounds[i].y + (musicChoiceHeight - choiceBoxHeight) / 2, // центрировано по высоте
+                choiceBoxWidth,
+                choiceBoxHeight
             );
         }
 
+        // Расположение кнопки "Назад"
+        float backButtonX = 165f;
+        float backButtonY = virtualHeight - backButtonHeight - 65f;
         backButtonBounds = new Rectangle(
-            50f,
-            virtualHeight - backButtonHeight - 50f,
+            backButtonX,
+            backButtonY,
             backButtonWidth,
             backButtonHeight
         );
     }
 
     public void render(SpriteBatch batch) {
+        // Отрисовка фона
         batch.draw(background, 0, 0, virtualWidth, virtualHeight);
 
-        batch.draw(sliderBody, musicSliderBounds.x, musicSliderBounds.y, musicSliderBounds.width, musicSliderBounds.height);
+        // Отрисовка ползунка музыки
+        batch.draw(sliderBody,
+            musicSliderBounds.x,
+            musicSliderBounds.y,
+            musicSliderBounds.width,
+            musicSliderBounds.height);
+
         float musicControllerX = musicSliderBounds.x + musicVolume * (musicSliderBounds.width - 30);
-        batch.draw(sliderController, musicControllerX, musicSliderBounds.y - 10, 30, 50);
+        batch.draw(sliderController,
+            musicControllerX - 15, // Смещение для центрирования (новый размер 60x60)
+            musicSliderBounds.y - 15,
+            60, 60); // Увеличенный и более круглый размер
 
-        batch.draw(sliderBody, soundSliderBounds.x, soundSliderBounds.y, soundSliderBounds.width, soundSliderBounds.height);
+        // Отрисовка ползунка звука
+        batch.draw(sliderBody,
+            soundSliderBounds.x,
+            soundSliderBounds.y,
+            soundSliderBounds.width,
+            soundSliderBounds.height);
+
         float soundControllerX = soundSliderBounds.x + soundVolume * (soundSliderBounds.width - 30);
-        batch.draw(sliderController, soundControllerX, soundSliderBounds.y - 10, 30, 50);
+        batch.draw(sliderController,
+            soundControllerX - 15,
+            soundSliderBounds.y - 15,
+            60, 60);
 
+        // Отрисовка элементов выбора музыки
         for (int i = 0; i < 3; i++) {
-            if (i == selectedMusicIndex) {
-                batch.draw(choiceBoxSelected, musicSelectionButtonBounds[i].x, musicSelectionButtonBounds[i].y, musicSelectionButtonBounds[i].width, musicSelectionButtonBounds[i].height);
-            } else {
-                batch.draw(choiceBox, musicSelectionButtonBounds[i].x, musicSelectionButtonBounds[i].y, musicSelectionButtonBounds[i].width, musicSelectionButtonBounds[i].height);
-            }
+            // Сначала рисуем прямоугольник фона
+            batch.draw(musicTextures[i],
+                musicChoiceBounds[i].x,musicChoiceBounds[i].y,
+                musicChoiceBounds[i].width,
+                musicChoiceBounds[i].height);
 
-            batch.draw(musicTextures[i], musicChoiceBounds[i].x, musicChoiceBounds[i].y, musicChoiceBounds[i].width, musicChoiceBounds[i].height);
+            // Затем рисуем кнопку выбора (чекбокс) справа
+            Texture currentChoiceBox = (i == selectedMusicIndex) ? choiceBoxSelected : choiceBox;
+            batch.draw(currentChoiceBox,
+                musicSelectionButtonBounds[i].x,
+                musicSelectionButtonBounds[i].y,
+                musicSelectionButtonBounds[i].width,
+                musicSelectionButtonBounds[i].height);
         }
 
+        // Отрисовка кнопки "Назад"
         Texture currentBackTexture = backButton;
         if (isBackPressed) {
             currentBackTexture = backButtonPressed;
         } else if (isBackHovered) {
             currentBackTexture = backButtonHover;
         }
-        batch.draw(currentBackTexture, backButtonBounds.x, backButtonBounds.y, backButtonBounds.width, backButtonBounds.height);
+        batch.draw(currentBackTexture,
+            backButtonBounds.x,
+            backButtonBounds.y,
+            backButtonBounds.width,
+            backButtonBounds.height);
     }
 
     public void updateInput(float touchX, float touchY, boolean isTouched) {
+        // Обновление состояния кнопки "Назад"
         isBackHovered = backButtonBounds.contains(touchX, touchY);
-        if (isBackHovered && isTouched) {
-            isBackPressed = true;
-        } else {
-            isBackPressed = false;
-        }
+        isBackPressed = isBackHovered && isTouched;
 
+        // Обработка выбора музыки
         if (isTouched) {
             for (int i = 0; i < 3; i++) {
-                // Проверяем клик по квадратной кнопке выбора, а не по всему прямоугольнику с названием
                 if (musicSelectionButtonBounds[i].contains(touchX, touchY)) {
                     selectedMusicIndex = i;
                     break;
@@ -159,6 +213,7 @@ public class SettingsScreen {
             }
         }
 
+        // Обработка перетаскивания ползунков
         if (isTouched) {
             if (musicSliderBounds.contains(touchX, touchY)) {
                 isMusicSliderDragging = true;
@@ -171,13 +226,16 @@ public class SettingsScreen {
             isSoundSliderDragging = false;
         }
 
+        // Обновление значений громкости
         if (isMusicSliderDragging) {
             musicVolume = (touchX - musicSliderBounds.x) / musicSliderBounds.width;
             musicVolume = Math.max(0, Math.min(1, musicVolume));
             if (currentMusic != null) {
                 currentMusic.setVolume(musicVolume);
             }
-        }if (isSoundSliderDragging) {
+        }
+
+        if (isSoundSliderDragging) {
             soundVolume = (touchX - soundSliderBounds.x) / soundSliderBounds.width;
             soundVolume = Math.max(0, Math.min(1, soundVolume));
             if (main != null) {

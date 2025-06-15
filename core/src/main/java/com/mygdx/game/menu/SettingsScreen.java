@@ -20,6 +20,7 @@ public class SettingsScreen {
     private Rectangle musicSliderBounds;
     private Rectangle soundSliderBounds;
     private Rectangle[] musicChoiceBounds;
+    private Rectangle[] musicSelectionButtonBounds; // Новый прямоугольник для кнопок выбора
     private Rectangle backButtonBounds;
     private boolean isMusicSliderDragging = false;
     private boolean isSoundSliderDragging = false;
@@ -55,6 +56,7 @@ public class SettingsScreen {
         backButton = new Texture("start/back.png");
         backButtonHover = new Texture("start/back_hover.png");
         backButtonPressed = new Texture("start/back_click.png");
+
         setupBounds();
     }
 
@@ -80,15 +82,24 @@ public class SettingsScreen {
             sliderHeight
         );
 
-        musicChoiceBounds = new Rectangle[3];
+        musicChoiceBounds = new Rectangle[3];musicSelectionButtonBounds = new Rectangle[3]; // Инициализация массива для кнопок выбора
         float startY = virtualHeight * 0.3f;
         float spacing = 20f;
+
         for (int i = 0; i < 3; i++) {
             musicChoiceBounds[i] = new Rectangle(
                 virtualWidth / 2 - musicChoiceWidth / 2,
                 startY - i * (musicChoiceHeight + spacing),
                 musicChoiceWidth,
                 musicChoiceHeight
+            );
+
+            // Прямоугольник для квадратной кнопки выбора (50x50)
+            musicSelectionButtonBounds[i] = new Rectangle(
+                musicChoiceBounds[i].x - 50, // Расположение слева от названия песни
+                musicChoiceBounds[i].y,
+                50,
+                musicChoiceBounds[i].height
             );
         }
 
@@ -100,20 +111,24 @@ public class SettingsScreen {
         );
     }
 
-    public void render(SpriteBatch batch) {batch.draw(background, 0, 0, virtualWidth, virtualHeight);
+    public void render(SpriteBatch batch) {
+        batch.draw(background, 0, 0, virtualWidth, virtualHeight);
+
         batch.draw(sliderBody, musicSliderBounds.x, musicSliderBounds.y, musicSliderBounds.width, musicSliderBounds.height);
         float musicControllerX = musicSliderBounds.x + musicVolume * (musicSliderBounds.width - 30);
         batch.draw(sliderController, musicControllerX, musicSliderBounds.y - 10, 30, 50);
+
         batch.draw(sliderBody, soundSliderBounds.x, soundSliderBounds.y, soundSliderBounds.width, soundSliderBounds.height);
         float soundControllerX = soundSliderBounds.x + soundVolume * (soundSliderBounds.width - 30);
         batch.draw(sliderController, soundControllerX, soundSliderBounds.y - 10, 30, 50);
 
         for (int i = 0; i < 3; i++) {
             if (i == selectedMusicIndex) {
-                batch.draw(choiceBoxSelected, musicChoiceBounds[i].x - 50, musicChoiceBounds[i].y, 50, musicChoiceBounds[i].height);
+                batch.draw(choiceBoxSelected, musicSelectionButtonBounds[i].x, musicSelectionButtonBounds[i].y, musicSelectionButtonBounds[i].width, musicSelectionButtonBounds[i].height);
             } else {
-                batch.draw(choiceBox, musicChoiceBounds[i].x - 50, musicChoiceBounds[i].y, 50, musicChoiceBounds[i].height);
+                batch.draw(choiceBox, musicSelectionButtonBounds[i].x, musicSelectionButtonBounds[i].y, musicSelectionButtonBounds[i].width, musicSelectionButtonBounds[i].height);
             }
+
             batch.draw(musicTextures[i], musicChoiceBounds[i].x, musicChoiceBounds[i].y, musicChoiceBounds[i].width, musicChoiceBounds[i].height);
         }
 
@@ -136,7 +151,8 @@ public class SettingsScreen {
 
         if (isTouched) {
             for (int i = 0; i < 3; i++) {
-                if (musicChoiceBounds[i].contains(touchX, touchY)) {
+                // Проверяем клик по квадратной кнопке выбора, а не по всему прямоугольнику с названием
+                if (musicSelectionButtonBounds[i].contains(touchX, touchY)) {
                     selectedMusicIndex = i;
                     break;
                 }
@@ -161,9 +177,7 @@ public class SettingsScreen {
             if (currentMusic != null) {
                 currentMusic.setVolume(musicVolume);
             }
-        }
-
-        if (isSoundSliderDragging) {
+        }if (isSoundSliderDragging) {
             soundVolume = (touchX - soundSliderBounds.x) / soundSliderBounds.width;
             soundVolume = Math.max(0, Math.min(1, soundVolume));
             if (main != null) {

@@ -340,7 +340,7 @@ public class Main extends ApplicationAdapter {
      * Воспроизводит музыку в соответствии с текущим состоянием игры
      */
     private void playMusicForCurrentState() {
-        // Если игра окончена, останавливаем любую играющую музыку и выходим.
+        // Если игра окончена, останавливаем любую играющую музыку и выходим
         if (currentState == GameState.GAME_OVER) {
             if (currentPlayingMusic != null) {
                 currentPlayingMusic.stop();
@@ -353,6 +353,10 @@ public class Main extends ApplicationAdapter {
             // Если текущее состояние - игра, и играет меню-музыка, останавливаем её
             if (currentPlayingMusic == menuMusic) {
                 menuMusic.stop();
+                currentPlayingMusic = gameplayMusic;
+            }
+            // Если музыки нет (после смерти), просто запускаем музыку игры
+            else if (currentPlayingMusic == null) {
                 currentPlayingMusic = gameplayMusic;
             }
         } else {
@@ -675,16 +679,16 @@ public class Main extends ApplicationAdapter {
         // renderGame должен управлять своим SpriteBatch, так как он вызывается после batch.end()
         // из основного цикла render() (когда currentState == IN_GAME)
         batch.setProjectionMatrix(camera.combined);
-        batch.begin(); // Начинаем batch ЗДЕСЬ, один раз для всей игровой сцены
+        batch.begin(); // Начинаем batch, один раз для всей игровой сцены
 
         if (gameOver && gameOverTexture != null) {
             // Рендеринг экрана окончания игры
             batch.draw(gameOverTexture,
-                camera.position.x - camera.viewportWidth / 2f, // смещение камеры влево
+                camera.position.x - camera.viewportWidth / 2f, // Смещение камеры влево
                 0,
                 camera.viewportWidth,camera.viewportHeight);
         } else {
-            // РИСУЕМ ОБЫЧНУЮ ИГРОВУЮ СЦЕНУ
+            // Рисуем игровую сцену
             // 1. Фон
             background.render(batch, camera);
             // 2. Препятствия
@@ -695,18 +699,16 @@ public class Main extends ApplicationAdapter {
             player.render(batch);
         }
 
-        // Заканчиваем batch ЗДЕСЬ (конец отрисовки)
+        // Заканчиваем batch (конец отрисовки)
         batch.end();
     }
 
     /**
      * Обрабатывает ввод пользователя
      */
-    // Этот метод раньше назывался handleInput. Переименован для ясности.
-    // Обрабатывает логику нажатий и отпусканий для изменения состояния игры.
+    // Обработка логики нажатий и отпусканий для изменения состояния игры
     private void handleGameInputLogic() {
         // Обработка ввода во время игры (прыжок)
-        // Игровой ввод (не UI), например, прыжок
         if (currentState == GameState.IN_GAME) {
             if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
                 player.jump();
@@ -873,7 +875,6 @@ public class Main extends ApplicationAdapter {
         if (settingsScreen != null) settingsScreen.dispose();
 
         // Освобождение музыкальных ресурсов
-        // currentPlayingMusic - это ссылка на один из вышеуказанных объектов, ее отдельно освобождать не надо
         if (menuMusic != null) menuMusic.dispose();
         if (gameplayMusic != null) gameplayMusic.dispose();
 

@@ -33,8 +33,6 @@ public class AnimationManager implements Disposable {
     // Модифицируем метод createAnimation для сохранения текстур
     private Animation<TextureRegion> createAnimation(String path, Array<Texture> texturesList, float frameDuration, Animation.PlayMode playMode) {
         Array<TextureRegion> frames = new Array<>();
-        // Убедитесь, что у вас действительно 24 кадра для каждой анимации
-        // или сделайте количество кадров параметром или определите его динамически.
         for (int i = 1; i <= 24; i++) {
             Texture texture = new Texture(Gdx.files.internal(path + "/" + i + ".png"));
             texturesList.add(texture); // Добавляем созданную текстуру в список
@@ -80,9 +78,6 @@ public class AnimationManager implements Disposable {
         // Теперь освобождаем текстуры из наших списков
         disposeTextures(runningTextures);
         disposeTextures(jumpingTextures);
-        // Нет необходимости вызывать dispose на самих объектах Animation,
-        // они не владеют ресурсами, требующими нативной очистки, кроме тех,
-        // что содержатся в TextureRegion (т.е. текстур).
     }
 
     // Метод для освобождения всех текстур из списка

@@ -25,7 +25,7 @@ public class Obstacle {
         this.width = height * aspectRatio;
         //штука для хитбокса
         if (texturePath == "environment/beehive.png") {
-            boundsInsetX = 55f;
+            boundsInsetX = 40f;
             this.bounds = new Rectangle(
                 x + boundsInsetX,
                 y + boundsInsetY,
@@ -34,7 +34,7 @@ public class Obstacle {
             );
         }
         if (texturePath == "environment/pit.png") {
-            boundsInsetX = 140f;
+            boundsInsetX = 100f;
             this.bounds = new Rectangle(
                 x - boundsInsetX,
                 y + boundsInsetY,

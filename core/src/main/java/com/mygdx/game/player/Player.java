@@ -19,10 +19,10 @@ public class Player {
     private final AnimationManager animationManager;
 
     private float verticalVelocity;
-    private boolean isJumping;
-    private final float jumpVelocity = 1800f;
-    private final float gravity = -3600f;
-    private final float groundY;
+    private boolean isJumping; // Флаг — прыгает ли сейчас персонаж
+    private final float jumpVelocity = 1800f; // Значение скорости прыжка
+    private final float gravity = -3600f; // Значение гравитации (ускорения вниз)
+    private final float groundY; // Y-координата "земли", на которой стоит персонаж
 
     private final Sound jumpSound;
     private float soundVolume = 1.0f; // Добавлено поле для громкости звука
@@ -31,11 +31,11 @@ public class Player {
         this.spriteHeight = 480;
         this.position = new Vector2(x, y);
         this.groundY = y;
-
+        // Загружаем один кадр, чтобы вычислить соотношение сторон спрайта
         TextureRegion sampleFrame = new TextureRegion(new Texture(Gdx.files.internal("characters/krosh/running/1.png")));
         float aspectRatio = sampleFrame.getRegionWidth() / (float)sampleFrame.getRegionHeight();
         this.spriteWidth = spriteHeight * aspectRatio;
-        sampleFrame.getTexture().dispose();
+        sampleFrame.getTexture().dispose(); // Очищаем текстуру, чтобы не держать в памяти
 
         this.animationManager = new AnimationManager(
             "characters/krosh/running",
@@ -45,6 +45,7 @@ public class Player {
         this.verticalVelocity = 0;
         this.isJumping = false;
 
+        // Создаем границы столкновения (хитбоксы)
         this.bounds = new Rectangle(
             position.x + boundsShiftX + boundsInset,
             position.y + boundsInset,
@@ -58,11 +59,14 @@ public class Player {
         this.soundVolume = Math.max(0, Math.min(1, volume)); // Ограничиваем значение от 0 до 1
     }
 
+    // Обновление состояния персонажа — вызывается каждый кадр
     public void update(float deltaTime) {
+        // Обработка прыжка: изменение позиции по вертикали
         if (isJumping) {
             verticalVelocity += gravity * deltaTime;
             position.y += verticalVelocity * deltaTime;
 
+            // Если упал ниже земли — остановить прыжок
             if (position.y <= groundY) {
                 position.y = groundY;
                 verticalVelocity = 0;
@@ -70,7 +74,7 @@ public class Player {
                 animationManager.resetRunningAnimation();
             }
         }
-
+        // Обновление анимации
         animationManager.update(deltaTime, isJumping);
         bounds.setPosition(position.x + boundsShiftX + boundsInset, position.y + boundsInset);
     }
@@ -84,6 +88,7 @@ public class Player {
         }
     }
 
+    // Отрисовка текущего кадра анимации
     public void render(SpriteBatch batch) {
         TextureRegion frame = animationManager.getFrame(isJumping);
         batch.draw(frame, position.x, position.y, spriteWidth, spriteHeight);
@@ -93,11 +98,12 @@ public class Player {
         return bounds;
     }
 
+    // Сброс позиции игрока
     public void resetPosition() {
         position.y = groundY;
         verticalVelocity = 0;
         isJumping = false;
-        animationManager.resetRunningAnimation();
+        animationManager.resetRunningAnimation(); // Возврат к бегу
     }
 
     public void dispose() {
